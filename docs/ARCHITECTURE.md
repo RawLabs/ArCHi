@@ -26,6 +26,12 @@ no always-on microphone listener.
    labels its relationship to production as `agree`, `shadow_extension`,
    `shadow_regression`, `conflict`, or `not_comparable`.
 
+Clipboard readout has a deliberately narrow boundary: `wl-paste --type text`
+selects only an advertised textual clipboard representation, the helper rejects
+invalid UTF-8 or binary data, and `pocket-tts-say` verifies that the HTTP body is
+a readable PCM RIFF/WAVE stream before PipeWire can play it. Clipboard contents
+are neither logged nor passed through the command router.
+
 ## State
 
 - Runtime files live under `${XDG_RUNTIME_DIR}/archi`.
@@ -33,9 +39,6 @@ no always-on microphone listener.
   `${XDG_CONFIG_HOME:-$HOME/.config}/archi/pocket-tts-volume`.
 - Command diagnostics default to
   `$HOME/.local/state/archi/commands.jsonl`, unless `ARCHI_LOG_PATH` is set.
-- Clipboard read diagnostics default to `clipboard.jsonl` beside the command
-  log. They contain only byte count, SHA-256 digest, and success/failure state;
-  clipboard text is never logged.
 - Installed router and command defaults live under `ARCHI_HOME`, defaulting to
   `$HOME/.local/share/archi`.
 - The active registry is `commands.toml`; the latest installed project default

@@ -4,6 +4,7 @@ from pathlib import Path
 import subprocess
 import sys
 import time
+import wave
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -169,6 +170,12 @@ def test_tts_uses_bounded_request_and_safe_volume_default(tmp_path):
     fake_bin.mkdir()
     curl_marker = tmp_path / "curl-args"
     player_marker = tmp_path / "player-args"
+    valid_wav = tmp_path / "valid.wav"
+    with wave.open(str(valid_wav), "wb") as stream:
+        stream.setnchannels(1)
+        stream.setsampwidth(2)
+        stream.setframerate(24000)
+        stream.writeframes(b"\x00\x00")
     write_executable(
         fake_bin / "curl",
         """#!/usr/bin/env bash
@@ -176,7 +183,7 @@ printf '%s\n' "$@" > "$ARCHI_TEST_CURL_MARKER"
 while (($#)); do
   if [[ "$1" == "--output" ]]; then
     shift
-    printf 'RIFF' > "$1"
+    cp "$ARCHI_TEST_VALID_WAV" "$1"
     exit 0
   fi
   shift
@@ -196,6 +203,7 @@ exit 2
         "PATH": f"{fake_bin}:{os.environ['PATH']}",
         "ARCHI_TEST_CURL_MARKER": str(curl_marker),
         "ARCHI_TEST_PLAYER_MARKER": str(player_marker),
+        "ARCHI_TEST_VALID_WAV": str(valid_wav),
         "POCKET_TTS_TIMEOUT_SECONDS": "2",
         "POCKET_TTS_VOLUME": "not-a-number",
         "XDG_RUNTIME_DIR": str(runtime_root),
@@ -217,25 +225,26 @@ exit 2
     assert not (runtime_root / "archi" / "pocket-tts-player.pid").exists()
 
 
-def test_clipboard_reader_snapshots_text_and_logs_only_metadata(tmp_path):
+def test_clipboard_reader_requests_text_and_snapshots_it(tmp_path):
     fake_bin = tmp_path / "fake-bin"
     fake_bin.mkdir()
     spoken = tmp_path / "spoken-text"
+    paste_args = tmp_path / "paste-args"
     write_executable(
         fake_bin / "wl-paste",
-        "#!/usr/bin/env bash\nprintf 'clipboard sample'\n",
+        "#!/usr/bin/env bash\nprintf '%s\\n' \"$@\" > \"$ARCHI_TEST_PASTE_ARGS\"\n"
+        "printf 'clipboard sample'\n",
     )
     write_executable(
         fake_bin / "pocket-tts-say",
         "#!/usr/bin/env bash\ncat > \"$ARCHI_TEST_SPOKEN\"\n",
     )
-    state_root = tmp_path / "state"
     env = {
         **os.environ,
         "PATH": f"{fake_bin}:{os.environ['PATH']}",
         "ARCHI_BIN_DIR": str(fake_bin),
+        "ARCHI_TEST_PASTE_ARGS": str(paste_args),
         "ARCHI_TEST_SPOKEN": str(spoken),
-        "XDG_STATE_HOME": str(state_root),
     }
 
     subprocess.run(
@@ -245,10 +254,74 @@ def test_clipboard_reader_snapshots_text_and_logs_only_metadata(tmp_path):
     )
 
     assert spoken.read_text() == "clipboard sample"
-    log_path = state_root / "archi" / "clipboard.jsonl"
-    event = json.loads(log_path.read_text())
-    assert event["bytes"] == len(b"clipboard sample")
-    assert len(event["sha256"]) == 64
-    assert event["status"] == "spoken"
-    assert "clipboard sample" not in log_path.read_text()
-    assert log_path.stat().st_mode & 0o777 == 0o600
+    args = paste_args.read_text().splitlines()
+    assert args[args.index("--type") + 1] == "text"
+
+
+def test_clipboard_reader_rejects_non_utf8_data(tmp_path):
+    fake_bin = tmp_path / "fake-bin"
+    fake_bin.mkdir()
+    spoken = tmp_path / "spoken-text"
+    write_executable(fake_bin / "wl-paste", "#!/usr/bin/env bash\nprintf '\\377\\376'\n")
+    write_executable(
+        fake_bin / "pocket-tts-say",
+        "#!/usr/bin/env bash\ncat > \"$ARCHI_TEST_SPOKEN\"\n",
+    )
+    write_executable(fake_bin / "notify-send", "#!/usr/bin/env bash\nexit 0\n")
+    env = {
+        **os.environ,
+        "PATH": f"{fake_bin}:{os.environ['PATH']}",
+        "ARCHI_BIN_DIR": str(fake_bin),
+        "ARCHI_TEST_SPOKEN": str(spoken),
+    }
+
+    result = subprocess.run(
+        [PROJECT_ROOT / "scripts" / "pocket-tts-read-clipboard"], env=env
+    )
+
+    assert result.returncode != 0
+    assert not spoken.exists()
+
+
+def test_tts_refuses_non_wav_response(tmp_path):
+    fake_bin = tmp_path / "fake-bin"
+    fake_bin.mkdir()
+    player_marker = tmp_path / "player-called"
+    write_executable(
+        fake_bin / "curl",
+        """#!/usr/bin/env bash
+while (($#)); do
+  if [[ "$1" == "--output" ]]; then
+    shift
+    printf '{"detail":"not audio"}' > "$1"
+    exit 0
+  fi
+  shift
+done
+exit 2
+""",
+    )
+    write_executable(
+        fake_bin / "pw-play",
+        "#!/usr/bin/env bash\nprintf called > \"$ARCHI_TEST_PLAYER_MARKER\"\n",
+    )
+    write_executable(fake_bin / "notify-send", "#!/usr/bin/env bash\nexit 0\n")
+    env = {
+        **os.environ,
+        "PATH": f"{fake_bin}:{os.environ['PATH']}",
+        "ARCHI_HOME": str(tmp_path / "empty-archi-home"),
+        "ARCHI_TEST_PLAYER_MARKER": str(player_marker),
+        "XDG_RUNTIME_DIR": str(tmp_path / "runtime"),
+    }
+
+    result = subprocess.run(
+        [PROJECT_ROOT / "scripts" / "pocket-tts-say"],
+        input="Readable text.",
+        text=True,
+        capture_output=True,
+        env=env,
+    )
+
+    assert result.returncode != 0
+    assert "playback refused" in result.stderr
+    assert not player_marker.exists()

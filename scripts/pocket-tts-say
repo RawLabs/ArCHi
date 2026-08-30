@@ -13,6 +13,12 @@ fi
 if [[ -z "${text//[[:space:]]/}" ]]; then
   exit 0
 fi
+if ! printf '%s' "$text" | iconv -f UTF-8 -t UTF-8 >/dev/null 2>&1; then
+  printf 'ArCHi speech input is not valid UTF-8 text.\n' >&2
+  command -v notify-send >/dev/null 2>&1 &&
+    notify-send "ArCHi" "Speech input is not valid text." || true
+  exit 1
+fi
 
 url="${POCKET_TTS_URL:-http://127.0.0.1:8000/tts}"
 voice="${POCKET_TTS_VOICE:-alba}"
@@ -44,6 +50,50 @@ fi
 audio="$(mktemp --suffix=.wav)"
 text_file="$(mktemp)"
 ducked_streams=()
+
+valid_wav() {
+  [[ -s "$audio" ]] &&
+    [[ "$(head -c 4 "$audio")" == "RIFF" ]] &&
+    [[ "$(dd if="$audio" bs=1 skip=8 count=4 status=none)" == "WAVE" ]] &&
+    python3 - "$audio" <<'PY'
+import sys
+import wave
+
+try:
+    with wave.open(sys.argv[1], "rb") as stream:
+        valid = (
+            stream.getnchannels() > 0
+            and stream.getsampwidth() > 0
+            and stream.getframerate() > 0
+            and stream.getcomptype() == "NONE"
+            and bool(stream.readframes(1))
+        )
+except (EOFError, OSError, wave.Error):
+    valid = False
+raise SystemExit(0 if valid else 1)
+PY
+}
+
+invalid_audio() {
+  printf 'Pocket TTS did not return valid WAV audio; playback refused.\n' >&2
+  command -v notify-send >/dev/null 2>&1 &&
+    notify-send "ArCHi" "Speech service returned invalid audio." || true
+}
+
+request_audio() {
+  local voice_mode="$1"
+  local -a request_args=(
+    --fail --silent --show-error --connect-timeout 2 --max-time "$tts_timeout"
+    --header "Accept: audio/wav"
+    --form "text=<$text_file"
+  )
+  if [[ "$voice_mode" == "custom" ]]; then
+    request_args+=(--form "voice_wav=@$voice_file")
+  else
+    request_args+=(--form-string "voice_url=$voice")
+  fi
+  curl "${request_args[@]}" "$url" --output "$audio" && valid_wav
+}
 
 duck_streams() {
   command -v pw-dump wpctl jq >/dev/null 2>&1 || return 0
@@ -96,23 +146,17 @@ exec 9>"$runtime_dir/pocket-tts.lock"
 flock 9
 printf '%s' "$text" > "$text_file"
 
-curl_args=(
-  --fail --silent --show-error --connect-timeout 2 --max-time "$tts_timeout"
-  --form "text=<$text_file"
-)
 if [[ -f "$voice_file" ]]; then
-  curl_args+=(--form "voice_wav=@$voice_file")
-  if ! curl "${curl_args[@]}" "$url" --output "$audio"; then
+  if ! request_audio custom; then
     printf 'Custom voice unavailable; falling back to %s.\n' "$voice" >&2
-    curl --fail --silent --show-error --connect-timeout 2 --max-time "$tts_timeout" \
-      --form "text=<$text_file" \
-      --form-string "voice_url=$voice" \
-      "$url" \
-      --output "$audio"
+    if ! request_audio named; then
+      invalid_audio
+      exit 1
+    fi
   fi
-else
-  curl_args+=(--form-string "voice_url=$voice")
-  curl "${curl_args[@]}" "$url" --output "$audio"
+elif ! request_audio named; then
+  invalid_audio
+  exit 1
 fi
 
 duck_streams
