@@ -1,6 +1,8 @@
+import json
 import os
 from pathlib import Path
 import subprocess
+import sys
 import time
 
 
@@ -27,8 +29,10 @@ def test_installer_preserves_registry_and_can_refresh_it(tmp_path):
     active_registry = archi_home / "commands.toml"
     default_registry = archi_home / "commands.default.toml"
     project_registry = (PROJECT_ROOT / "config" / "commands.toml").read_text()
+    project_intents = (PROJECT_ROOT / "config" / "intents.yaml").read_text()
     assert active_registry.read_text() == project_registry
     assert default_registry.read_text() == project_registry
+    assert (archi_home / "intents.yaml").read_text() == project_intents
     migrated_voice = archi_home / "assets" / "voice.wav"
     assert migrated_voice.read_bytes() == b"private voice sample"
     assert migrated_voice.stat().st_mode & 0o777 == 0o600
@@ -45,6 +49,53 @@ def test_installer_preserves_registry_and_can_refresh_it(tmp_path):
     backups = list(archi_home.glob("commands.toml.bak.*"))
     assert len(backups) == 1
     assert backups[0].read_text() == "# local customization\n"
+
+
+def test_shadow_report_summarizes_coverage_and_review_queue(tmp_path):
+    log_path = tmp_path / "commands.jsonl"
+    registry_path = tmp_path / "commands.toml"
+    registry_path.write_text(
+        '[[commands]]\nid = "open_browser"\naction = "launch"\n'
+        '[[commands]]\nid = "open_terminal"\naction = "launch"\n'
+    )
+    events = [
+        {
+            "result": "success",
+            "matched_command_id": "open_browser",
+            "normalized_phrase": "open browser",
+            "performance": {"on_ac_power": True},
+            "shadow": {"status": "matched", "command_id": "open_browser", "duration_ms": 12},
+            "comparison": "agree",
+        },
+        {
+            "result": "unknown",
+            "matched_command_id": None,
+            "normalized_phrase": "launch console",
+            "performance": {"on_ac_power": False},
+            "shadow": {"status": "matched", "command_id": "open_terminal", "duration_ms": 14},
+            "comparison": "shadow_extension",
+        },
+    ]
+    log_path.write_text("".join(f"{json.dumps(event)}\n" for event in events))
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            PROJECT_ROOT / "scripts" / "archi-shadow-report",
+            "--log",
+            log_path,
+            "--registry",
+            registry_path,
+            "--details",
+        ],
+        text=True,
+        capture_output=True,
+        check=True,
+    )
+    assert "comparison: agree=1, shadow_extension=1" in result.stdout
+    assert "production command coverage: 1/2" in result.stdout
+    assert "review queue: 1" in result.stdout
+    assert "shadow_extension\t-\topen_terminal\tlaunch console" in result.stdout
 
 
 def test_control_stop_bounds_missing_transcript_wait(tmp_path):
@@ -96,8 +147,10 @@ def test_control_cancel_removes_all_session_files(tmp_path):
     runtime_dir.mkdir(parents=True)
     transcript = runtime_dir / "control-transcript.txt"
     session = runtime_dir / "control-session-id"
+    start_time = runtime_dir / "control-start-ns"
     transcript.write_text("unused")
     session.write_text("unused")
+    start_time.write_text("100")
     env = {
         **os.environ,
         "PATH": f"{fake_bin}:{os.environ['PATH']}",
@@ -108,6 +161,7 @@ def test_control_cancel_removes_all_session_files(tmp_path):
 
     assert not transcript.exists()
     assert not session.exists()
+    assert not start_time.exists()
 
 
 def test_tts_uses_bounded_request_and_safe_volume_default(tmp_path):

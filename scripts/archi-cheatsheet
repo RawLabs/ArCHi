@@ -1,0 +1,49 @@
+#!/usr/bin/env python3
+"""Print the active ArCHi testing controls and accepted command phrases."""
+
+from __future__ import annotations
+
+import os
+from pathlib import Path
+import tomllib
+
+
+BINDINGS = [
+    ("Super + R", "start ArCHi command capture"),
+    ("Enter", "submit while ArCHi capture is active"),
+    ("Escape", "cancel while ArCHi capture is active"),
+    ("Super + Shift + R", "start dictation/documentation mode"),
+    ("Enter", "stop and submit while dictation is active"),
+    ("Escape", "cancel while dictation is active"),
+    ("Super + Shift + V", "read the clipboard aloud"),
+    ("Super + Ctrl + Up", "raise ArCHi voice volume"),
+    ("Super + Ctrl + Down", "lower ArCHi voice volume"),
+    ("F9", "legacy dictation push-to-talk"),
+    ("Super + Ctrl + X", "legacy dictation toggle"),
+    ("Copilot / Super + Space", "open the Omarchy app menu"),
+]
+
+
+def main() -> int:
+    archi_home = Path(os.environ.get("ARCHI_HOME", Path.home() / ".local" / "share" / "archi"))
+    registry = Path(os.environ.get("ARCHI_COMMANDS_PATH", archi_home / "commands.toml"))
+    try:
+        with registry.open("rb") as stream:
+            commands = tomllib.load(stream).get("commands", [])
+    except (OSError, tomllib.TOMLDecodeError) as error:
+        print(f"Could not read ArCHi registry {registry}: {error}")
+        return 1
+
+    print("ArCHi testing key map")
+    for keys, purpose in BINDINGS:
+        print(f"  {keys:<27} {purpose}")
+    print("\nAccepted production commands (say one phrase exactly)")
+    for command in commands:
+        phrases = " | ".join(command.get("phrases", []))
+        print(f"  {command['id']:<22} {phrases}")
+    print("\nDetailed test matrix: docs/TESTING.md")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

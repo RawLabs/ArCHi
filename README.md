@@ -72,6 +72,7 @@ Useful override variables:
 - `ARCHI_HOME`: installed ArCHi data directory, default `~/.local/share/archi`;
 - `ARCHI_BIN_DIR`: helper script directory, default `~/.local/bin`;
 - `ARCHI_COMMANDS_PATH`: command registry path;
+- `ARCHI_INTENTS_PATH`: independent HassIL diagnostic grammar path;
 - `ARCHI_LOG_PATH`: command diagnostic log path;
 - `ARCHI_TTS_SAY`: speech helper used by the router;
 - `ARCHI_TRANSCRIPT_WAIT_TICKS`: transcript wait in tenths of a second,
@@ -106,13 +107,15 @@ control. Do not commit logs or voice recordings.
 
 ```text
 src/archi/       deterministic command router
-config/          allowlisted Omarchy command profile
+config/          allowlisted command profile and diagnostic intent grammar
 scripts/         push-to-talk, TTS, and utility entry points
 docs/            installation and architecture notes
 tests/           router behavior tests
 ```
 
-See [architecture notes](docs/ARCHITECTURE.md) for the runtime flow and trust
+See the [testing cheat sheet](docs/TESTING.md) for the current key map, every
+accepted phrase, and the next-phase test matrix. See
+[architecture notes](docs/ARCHITECTURE.md) for the runtime flow and trust
 boundaries.
 
 ## Before publishing

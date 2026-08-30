@@ -1,0 +1,199 @@
+#!/usr/bin/env python3
+"""Summarize ArCHi production/shadow evidence without changing the desktop."""
+
+from __future__ import annotations
+
+import argparse
+from collections import Counter
+import json
+import os
+from pathlib import Path
+import statistics
+import tomllib
+
+
+def classify(event: dict) -> str:
+    recorded = event.get("comparison")
+    if recorded:
+        return recorded
+    shadow = event.get("shadow") or {}
+    shadow_status = shadow.get("status")
+    production_id = event.get("matched_command_id")
+    shadow_id = shadow.get("command_id") if shadow_status == "matched" else None
+    if event.get("clarification_count", 0) > 0:
+        return "not_comparable"
+    if shadow_status in {"not_installed", "schema_missing", "error", "invalid_command", "test", None}:
+        return "not_comparable"
+    if event.get("event_type") == "silent_input" or shadow_status == "skipped":
+        return "agree" if not production_id else "not_comparable"
+    if production_id:
+        if shadow_status == "no_match":
+            return "shadow_regression"
+        if shadow_status == "matched":
+            return "agree" if production_id == shadow_id else "conflict"
+        return "not_comparable"
+    if shadow_status == "matched":
+        return "shadow_extension"
+    if shadow_status == "no_match":
+        return "agree"
+    return "not_comparable"
+
+
+def load_events(path: Path) -> tuple[list[dict], int]:
+    events: list[dict] = []
+    invalid = 0
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except FileNotFoundError:
+        return events, invalid
+    for line in lines:
+        if not line.strip():
+            continue
+        try:
+            event = json.loads(line)
+            if not isinstance(event, dict):
+                raise ValueError
+            events.append(event)
+        except (json.JSONDecodeError, ValueError):
+            invalid += 1
+    return events, invalid
+
+
+def observable_command_ids(path: Path) -> set[str]:
+    try:
+        with path.open("rb") as stream:
+            entries = tomllib.load(stream).get("commands", [])
+    except (FileNotFoundError, OSError, tomllib.TOMLDecodeError):
+        return set()
+    return {
+        entry["id"]
+        for entry in entries
+        if entry.get("id") and entry.get("action") not in {"mode_off_record", "mode_logging_on"}
+    }
+
+
+def count_line(label: str, counts: Counter) -> None:
+    rendered = ", ".join(f"{key}={value}" for key, value in sorted(counts.items())) or "none"
+    print(f"{label}: {rendered}")
+
+
+def power_label(event: dict) -> str:
+    on_ac_power = (event.get("performance") or {}).get("on_ac_power")
+    if on_ac_power is True:
+        return "ac"
+    if on_ac_power is False:
+        return "battery"
+    return "unknown"
+
+
+def timing_by_power(events: list[dict], label: str, value_getter) -> None:
+    grouped: dict[str, list[float]] = {"ac": [], "battery": [], "unknown": []}
+    for event in events:
+        value = value_getter(event)
+        if isinstance(value, (int, float)):
+            grouped[power_label(event)].append(value)
+    rendered = []
+    for power_state in ("ac", "battery", "unknown"):
+        values = grouped[power_state]
+        if values:
+            rendered.append(f"{power_state}={statistics.median(values):g} (n={len(values)})")
+    if rendered:
+        print(f"{label} median ms by power: {', '.join(rendered)}")
+
+
+def main() -> int:
+    archi_home = Path(os.environ.get("ARCHI_HOME", Path.home() / ".local" / "share" / "archi"))
+    parser = argparse.ArgumentParser(description="Summarize ArCHi command/shadow test evidence.")
+    parser.add_argument(
+        "--log",
+        type=Path,
+        default=Path(os.environ.get(
+            "ARCHI_LOG_PATH", Path.home() / ".local" / "state" / "archi" / "commands.jsonl"
+        )),
+    )
+    parser.add_argument(
+        "--registry",
+        type=Path,
+        default=Path(os.environ.get("ARCHI_COMMANDS_PATH", archi_home / "commands.toml")),
+    )
+    parser.add_argument("--details", action="store_true", help="Show phrases needing review.")
+    args = parser.parse_args()
+
+    events, invalid = load_events(args.log)
+    if not events:
+        print(f"No ArCHi events found in {args.log}")
+        return 1
+
+    comparisons = Counter(classify(event) for event in events)
+    production_results = Counter(str(event.get("result") or "unset") for event in events)
+    shadow_results = Counter(str((event.get("shadow") or {}).get("status") or "missing") for event in events)
+    power_states = Counter(power_label(event) for event in events)
+    power_profiles = Counter(
+        str((event.get("performance") or {}).get("power_profile") or "unknown")
+        for event in events
+    )
+    shadow_times = [
+        shadow["duration_ms"]
+        for event in events
+        if isinstance((shadow := event.get("shadow") or {}).get("duration_ms"), (int, float))
+        and shadow.get("status") in {"matched", "no_match"}
+    ]
+    expected = observable_command_ids(args.registry)
+    production_seen = {event.get("matched_command_id") for event in events} & expected
+    shadow_seen = {
+        (event.get("shadow") or {}).get("command_id")
+        for event in events
+        if (event.get("shadow") or {}).get("status") == "matched"
+    } & expected
+
+    print(f"ArCHi shadow report: {args.log}")
+    print(f"events: valid={len(events)}, invalid={invalid}")
+    count_line("comparison", comparisons)
+    count_line("production", production_results)
+    count_line("shadow", shadow_results)
+    count_line("power", power_states)
+    count_line("power profile", power_profiles)
+    if expected:
+        print(f"production command coverage: {len(production_seen)}/{len(expected)}")
+        print(f"shadow command coverage: {len(shadow_seen)}/{len(expected)}")
+        missing = sorted(expected - production_seen)
+        print(f"production commands not yet exercised: {', '.join(missing) or 'none'}")
+    if shadow_times:
+        print(
+            "shadow parse ms: "
+            f"median={statistics.median(shadow_times):g}, "
+            f"mean={statistics.fmean(shadow_times):.1f}, "
+            f"min={min(shadow_times):g}, max={max(shadow_times):g}"
+        )
+    timing_by_power(events, "router", lambda event: event.get("duration_ms"))
+    timing_by_power(
+        events,
+        "transcript wait",
+        lambda event: (event.get("capture") or {}).get("transcript_wait_ms"),
+    )
+    timing_by_power(
+        events,
+        "shadow parse",
+        lambda event: (event.get("shadow") or {}).get("duration_ms"),
+    )
+
+    review_count = sum(
+        comparisons[label] for label in ("shadow_extension", "shadow_regression", "conflict")
+    )
+    print(f"review queue: {review_count}")
+    if args.details:
+        print("\ncomparison\tproduction\tshadow\tphrase")
+        for event in events:
+            label = classify(event)
+            if label in {"agree", "not_comparable"}:
+                continue
+            phrase = str(event.get("normalized_phrase") or "").replace("\t", " ")
+            print(
+                f"{label}\t{event.get('matched_command_id') or '-'}\t"
+                f"{(event.get('shadow') or {}).get('command_id') or '-'}\t{phrase}"
+            )
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

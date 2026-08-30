@@ -22,6 +22,12 @@ REGISTRY_PATH = Path(os.environ.get(
     "ARCHI_COMMANDS_PATH",
     SOURCE_REGISTRY_PATH if SOURCE_REGISTRY_PATH.is_file() else DEPLOYED_REGISTRY_PATH,
 ))
+SOURCE_INTENTS_PATH = BASE.parents[1] / "config" / "intents.yaml"
+DEPLOYED_INTENTS_PATH = BASE / "intents.yaml"
+INTENTS_PATH = Path(os.environ.get(
+    "ARCHI_INTENTS_PATH",
+    SOURCE_INTENTS_PATH if SOURCE_INTENTS_PATH.is_file() else DEPLOYED_INTENTS_PATH,
+))
 VENDOR_DIR = BASE / "vendor"
 if VENDOR_DIR.is_dir():
     sys.path.insert(0, str(VENDOR_DIR))
@@ -31,7 +37,7 @@ OFF_RECORD_PATH = RUNTIME_DIR / "off-record"
 PENDING_PATH = RUNTIME_DIR / "pending.json"
 ARCHI_BIN_DIR = Path(os.environ.get("ARCHI_BIN_DIR", Path.home() / ".local" / "bin"))
 SPEAK = os.environ.get("ARCHI_TTS_SAY", str(ARCHI_BIN_DIR / "pocket-tts-say"))
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 INPUT_SOURCE = "voxtype-control"
 
 
@@ -117,6 +123,7 @@ def speak(text: str, dry_run: bool) -> None:
 def log_event(event: dict, suppressed: bool) -> None:
     if suppressed:
         return
+    event["comparison"] = classify_shadow(event)
     LOG_PATH.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
     with LOG_PATH.open("a", encoding="utf-8") as stream:
         stream.write(json.dumps(event, ensure_ascii=False) + "\n")
@@ -229,8 +236,23 @@ def performance_context() -> dict:
     return context
 
 
+def capture_context() -> dict:
+    """Read timing exported by the push-to-talk wrapper, if available."""
+    timings = {}
+    for field, variable in (
+        ("session_duration_ms", "ARCHI_CAPTURE_DURATION_MS"),
+        ("transcript_wait_ms", "ARCHI_TRANSCRIPT_WAIT_MS"),
+    ):
+        try:
+            value = int(os.environ.get(variable, ""))
+            timings[field] = value if value >= 0 else None
+        except ValueError:
+            timings[field] = None
+    return timings
+
+
 def hassil_shadow(phrase: str, commands_by_id: dict[str, dict] | None) -> dict:
-    """Compare HassIL against the registry without allowing it to control execution."""
+    """Compare an independent HassIL grammar without allowing it to execute."""
     if not phrase:
         return {"parser": "hassil", "status": "skipped", "reason": "empty_phrase", "duration_ms": 0}
     started = time.monotonic()
@@ -241,30 +263,34 @@ def hassil_shadow(phrase: str, commands_by_id: dict[str, dict] | None) -> dict:
         return {"parser": "hassil", "status": "not_installed", "duration_ms": 0}
 
     try:
+        if not INTENTS_PATH.is_file():
+            return {
+                "parser": "hassil",
+                "status": "schema_missing",
+                "duration_ms": round((time.monotonic() - started) * 1000),
+            }
         if commands_by_id is None:
             _, commands_by_id = load_commands()
-        intents = Intents.from_dict({
-            "language": "en",
-            "intents": {
-                f"ArCHi_{command_id}": {
-                    "data": [{
-                        "sentences": command.get("phrases", []),
-                        "slots": {"command_id": command_id},
-                    }]
-                }
-                for command_id, command in commands_by_id.items()
-            },
-        })
+        intents = Intents.from_files([INTENTS_PATH])
         match = recognize(phrase, intents)
         duration_ms = round((time.monotonic() - started) * 1000)
         if match is None:
             return {"parser": "hassil", "status": "no_match", "duration_ms": duration_ms}
         command_id = match.entities.get("command_id")
+        command_id_value = command_id.value if command_id else None
+        if command_id_value not in commands_by_id:
+            return {
+                "parser": "hassil",
+                "status": "invalid_command",
+                "intent_id": match.intent.name,
+                "command_id": command_id_value,
+                "duration_ms": duration_ms,
+            }
         return {
             "parser": "hassil",
             "status": "matched",
             "intent_id": match.intent.name,
-            "command_id": command_id.value if command_id else None,
+            "command_id": command_id_value,
             "duration_ms": duration_ms,
         }
     except Exception as error:
@@ -274,6 +300,32 @@ def hassil_shadow(phrase: str, commands_by_id: dict[str, dict] | None) -> dict:
             "error_type": type(error).__name__,
             "duration_ms": round((time.monotonic() - started) * 1000),
         }
+
+
+def classify_shadow(event: dict) -> str:
+    """Label the production/shadow relationship for test reporting."""
+    shadow = event.get("shadow") or {}
+    shadow_status = shadow.get("status")
+    production_id = event.get("matched_command_id")
+    shadow_id = shadow.get("command_id") if shadow_status == "matched" else None
+
+    if event.get("clarification_count", 0) > 0:
+        return "not_comparable"
+    if shadow_status in {"not_installed", "schema_missing", "error", "invalid_command", "test", None}:
+        return "not_comparable"
+    if event.get("event_type") == "silent_input" or shadow_status == "skipped":
+        return "agree" if not production_id else "not_comparable"
+    if production_id:
+        if shadow_status == "no_match":
+            return "shadow_regression"
+        if shadow_status == "matched":
+            return "agree" if shadow_id == production_id else "conflict"
+        return "not_comparable"
+    if shadow_status == "matched":
+        return "shadow_extension"
+    if shadow_status == "no_match":
+        return "agree"
+    return "not_comparable"
 
 
 def event_base(
@@ -294,6 +346,7 @@ def event_base(
         "clarification_count": 0,
         "execution_status": "not_run",
         "context": desktop_context(),
+        "capture": capture_context(),
         "performance": performance_context(),
         "shadow": hassil_shadow(phrase, commands_by_id),
         "logging_outcome": "recorded",

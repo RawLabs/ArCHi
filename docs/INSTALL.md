@@ -1,8 +1,9 @@
 # Installation notes
 
 Run `./install.sh` from a checked-out ArCHi source tree. The installer copies
-the router, default command profile, and helper scripts into standard XDG user
-locations. It never writes to `/usr/share/omarchy`.
+the router, default command profile, independent diagnostic grammar, and helper
+scripts into standard XDG user locations. It never writes to
+`/usr/share/omarchy`.
 
 On later installs, the active `commands.toml` is preserved and the current
 project default is written to `commands.default.toml`. Use
@@ -11,7 +12,8 @@ project default is written to `commands.default.toml`. Use
 Defaults:
 
 - scripts: `${ARCHI_BIN_DIR:-$HOME/.local/bin}`;
-- router and default registry: `${ARCHI_HOME:-$HOME/.local/share/archi}`;
+- router, registry, and `intents.yaml`:
+  `${ARCHI_HOME:-$HOME/.local/share/archi}`;
 - voice volume: `${XDG_CONFIG_HOME:-$HOME/.config}/archi/pocket-tts-volume`;
 - runtime state: `${XDG_RUNTIME_DIR}/archi`.
 
@@ -87,3 +89,5 @@ uv pip install --target "${ARCHI_HOME:-$HOME/.local/share/archi}/vendor" 'hassil
 ```
 
 HassIL results remain diagnostic-only and cannot choose an executable action.
+Use `archi-shadow-report --details` to summarize comparisons, command coverage,
+power-state distribution, and phrases that need review.

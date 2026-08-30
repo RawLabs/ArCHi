@@ -21,9 +21,13 @@ case "${1:-}" in
 esac
 
 install -d -m 755 "$bin_dir" "$data_dir"
-install -m 755 "$project_dir"/scripts/* "$bin_dir"/
+for script in "$project_dir"/scripts/*; do
+  [[ -f "$script" ]] || continue
+  install -m 755 "$script" "$bin_dir"/
+done
 install -m 644 "$project_dir/src/archi/router.py" "$data_dir/router.py"
 install -m 644 "$project_dir/config/commands.toml" "$data_dir/commands.default.toml"
+install -m 644 "$project_dir/config/intents.yaml" "$data_dir/intents.yaml"
 
 if [[ ! -e "$data_dir/commands.toml" ]]; then
   install -m 644 "$project_dir/config/commands.toml" "$data_dir/commands.toml"

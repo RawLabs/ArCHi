@@ -1,0 +1,172 @@
+# Independent diagnostic grammar. It may recognize more natural variations than
+# commands.toml, but its results are observational and never execute commands.
+language: en
+
+intents:
+  OpenItem:
+    data:
+      - sentences:
+          - "(open|launch|start) [the|my] {open_target:command_id}"
+
+  VolumeUp:
+    data:
+      - sentences:
+          - "volume up"
+          - "turn [the] volume up"
+          - "(make it|go) louder"
+          - "louder"
+          - "raise [the] volume"
+        slots:
+          command_id: volume_up
+
+  VolumeDown:
+    data:
+      - sentences:
+          - "volume down"
+          - "turn [the] volume down"
+          - "(make it|go) quieter"
+          - "quieter"
+          - "lower [the] volume"
+        slots:
+          command_id: volume_down
+
+  MuteAudio:
+    data:
+      - sentences:
+          - "mute [the] [audio|volume|sound]"
+          - "toggle [the] mute"
+        slots:
+          command_id: mute
+
+  LockComputer:
+    data:
+      - sentences:
+          - "lock [the|my] (computer|screen)"
+          - "lock it"
+        slots:
+          command_id: lock_computer
+
+  TakeScreenshot:
+    data:
+      - sentences:
+          - "(take|capture) [a] (screenshot|screen shot)"
+          - "screenshot"
+        slots:
+          command_id: take_screenshot
+
+  CloseTarget:
+    data:
+      - sentences:
+          - "(close|quit|exit|dismiss) [the] {close_target:command_id}"
+
+  CloseActiveWindow:
+    data:
+      - sentences:
+          - "(close|dismiss) [the] (window|this window|current window|active window)"
+        slots:
+          command_id: close_active_window
+
+  ClarifyClose:
+    data:
+      - sentences:
+          - "(close|quit|exit|dismiss)"
+        slots:
+          command_id: close_clarify
+
+  ReadClipboard:
+    data:
+      - sentences:
+          - "(read|speak) [the] clipboard [aloud]"
+          - "read (this|that) aloud"
+          - "read what I copied"
+        slots:
+          command_id: read_clipboard
+
+  StopSpeaking:
+    data:
+      - sentences:
+          - "stop (speaking|talking|reading) [aloud]"
+          - "cancel (speech|reading)"
+          - "(shut up|silence|be quiet)"
+        slots:
+          command_id: stop_speaking
+
+  OffRecord:
+    data:
+      - sentences:
+          - "(off record|off the record|private mode|stop logging)"
+        slots:
+          command_id: off_record
+
+  LoggingOn:
+    data:
+      - sentences:
+          - "(logging on|resume logging|start logging)"
+          - "back on [the] record"
+        slots:
+          command_id: logging_on
+
+  ChangeWorkspace:
+    data:
+      - sentences:
+          - "{workspace_direction:command_id} workspace"
+          - "(switch|go|move) to [the] {workspace_direction:command_id} workspace"
+
+  Identity:
+    data:
+      - sentences:
+          - "(what|who) are you"
+          - "identify yourself"
+          - "what is your name"
+        slots:
+          command_id: identity
+
+  Help:
+    data:
+      - sentences:
+          - "help [me]"
+          - "what can you do"
+          - "how do I use this"
+        slots:
+          command_id: help
+
+  ListCommands:
+    data:
+      - sentences:
+          - "(list|show) [the] commands"
+          - "what commands do you know"
+          - "command list"
+        slots:
+          command_id: list_commands
+
+lists:
+  open_target:
+    values:
+      - in: "(terminal|console)"
+        out: open_terminal
+      - in: "(browser|web browser|internet browser)"
+        out: open_browser
+      - in: "(agent|omarchy agent|default agent)"
+        out: open_default_agent
+      - in: "(files|file manager)"
+        out: open_files
+      - in: "home [folder]"
+        out: open_home
+      - in: "downloads [folder]"
+        out: open_downloads
+
+  close_target:
+    values:
+      - in: "terminal [window]"
+        out: close_terminal
+      - in: "browser [window]"
+        out: close_browser
+      - in: "(files|file manager)"
+        out: close_files
+
+  workspace_direction:
+    values:
+      - in: next
+        out: next_workspace
+      - in: "(previous|last|prior)"
+        out: previous_workspace

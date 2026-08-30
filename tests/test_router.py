@@ -85,6 +85,15 @@ def test_argv_expansion_is_portable(monkeypatch):
     ]
 
 
+def test_capture_context_validates_wrapper_timings(monkeypatch):
+    monkeypatch.setenv("ARCHI_CAPTURE_DURATION_MS", "1420")
+    monkeypatch.setenv("ARCHI_TRANSCRIPT_WAIT_MS", "not-a-number")
+    assert router.capture_context() == {
+        "session_duration_ms": 1420,
+        "transcript_wait_ms": None,
+    }
+
+
 def test_successful_route_is_logged(isolated_router):
     result = router.route("ArCHi, can you open terminal?", dry_run=True)
     assert result["status"] == "success"
@@ -156,6 +165,60 @@ def test_silent_input_is_recorded(isolated_router):
     assert event["event_type"] == "silent_input"
     assert event["result"] == "silent"
     assert event["shadow"]["status"] == "test"
+    assert event["comparison"] == "not_comparable"
+
+
+@pytest.mark.parametrize(
+    ("production_id", "shadow_status", "shadow_id", "expected"),
+    [
+        ("open_browser", "matched", "open_browser", "agree"),
+        (None, "no_match", None, "agree"),
+        (None, "matched", "open_browser", "shadow_extension"),
+        ("open_browser", "no_match", None, "shadow_regression"),
+        ("open_browser", "matched", "open_terminal", "conflict"),
+        ("open_browser", "not_installed", None, "not_comparable"),
+    ],
+)
+def test_shadow_comparison_labels(production_id, shadow_status, shadow_id, expected):
+    event = {
+        "event_type": "command",
+        "matched_command_id": production_id,
+        "shadow": {"status": shadow_status, "command_id": shadow_id},
+    }
+    assert router.classify_shadow(event) == expected
+
+
+def test_clarification_answer_is_not_compared_without_shadow_context():
+    event = {
+        "event_type": "command",
+        "matched_command_id": "close_terminal",
+        "clarification_count": 1,
+        "shadow": {"status": "no_match"},
+    }
+    assert router.classify_shadow(event) == "not_comparable"
+
+
+def test_independent_hassil_grammar_covers_exact_registry():
+    by_phrase, by_id = router.load_commands()
+    first = router.hassil_shadow("open browser", by_id)
+    if first["status"] == "not_installed":
+        pytest.skip("optional HassIL dependency is not installed")
+
+    failures = []
+    for phrase, command in by_phrase.items():
+        shadow = router.hassil_shadow(phrase, by_id)
+        if shadow.get("status") != "matched" or shadow.get("command_id") != command["id"]:
+            failures.append((phrase, command["id"], shadow))
+    assert failures == []
+
+
+def test_independent_hassil_grammar_finds_natural_extensions():
+    _, by_id = router.load_commands()
+    shadow = router.hassil_shadow("open the browser", by_id)
+    if shadow["status"] == "not_installed":
+        pytest.skip("optional HassIL dependency is not installed")
+    assert shadow["status"] == "matched"
+    assert shadow["command_id"] == "open_browser"
 
 
 def test_unknown_action_never_executes():

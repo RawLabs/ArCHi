@@ -5,16 +5,29 @@ runtime_dir="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/archi"
 archi_home="${ARCHI_HOME:-$HOME/.local/share/archi}"
 transcript="$runtime_dir/control-transcript.txt"
 session_file="$runtime_dir/control-session-id"
+start_time_file="$runtime_dir/control-start-ns"
 wait_ticks="${ARCHI_TRANSCRIPT_WAIT_TICKS:-50}"
 if [[ ! "$wait_ticks" =~ ^[0-9]+$ ]] || ((wait_ticks < 1 || wait_ticks > 600)); then
   wait_ticks=50
 fi
+stop_started_ns="$(date +%s%N)"
 voxtype record stop
 
 for ((attempt = 0; attempt < wait_ticks; attempt++)); do
   [[ -e "$transcript" || ! -e "$session_file" ]] && break
   sleep 0.1
 done
+
+transcript_ready_ns="$(date +%s%N)"
+transcript_wait_ms="$(( (transcript_ready_ns - stop_started_ns) / 1000000 ))"
+capture_duration_ms=""
+if [[ -e "$start_time_file" ]]; then
+  capture_started_ns="$(<"$start_time_file")"
+  rm -f "$start_time_file"
+  if [[ "$capture_started_ns" =~ ^[0-9]+$ ]] && ((capture_started_ns <= stop_started_ns)); then
+    capture_duration_ms="$(( (stop_started_ns - capture_started_ns) / 1000000 ))"
+  fi
+fi
 
 session_id=""
 if [[ -e "$session_file" ]]; then
@@ -23,14 +36,23 @@ if [[ -e "$session_file" ]]; then
 fi
 
 if [[ ! -e "$transcript" ]]; then
-  ARCHI_SESSION_ID="$session_id" python3 "$archi_home/router.py" --silent
+  ARCHI_SESSION_ID="$session_id" \
+    ARCHI_CAPTURE_DURATION_MS="$capture_duration_ms" \
+    ARCHI_TRANSCRIPT_WAIT_MS="$transcript_wait_ms" \
+    python3 "$archi_home/router.py" --silent
   exit 0
 fi
 
 text="$(<"$transcript")"
 rm -f "$transcript"
 if [[ -z "${text//[[:space:]]/}" ]]; then
-  ARCHI_SESSION_ID="$session_id" python3 "$archi_home/router.py" --silent
+  ARCHI_SESSION_ID="$session_id" \
+    ARCHI_CAPTURE_DURATION_MS="$capture_duration_ms" \
+    ARCHI_TRANSCRIPT_WAIT_MS="$transcript_wait_ms" \
+    python3 "$archi_home/router.py" --silent
 else
-  printf '%s' "$text" | ARCHI_SESSION_ID="$session_id" python3 "$archi_home/router.py"
+  printf '%s' "$text" | ARCHI_SESSION_ID="$session_id" \
+    ARCHI_CAPTURE_DURATION_MS="$capture_duration_ms" \
+    ARCHI_TRANSCRIPT_WAIT_MS="$transcript_wait_ms" \
+    python3 "$archi_home/router.py"
 fi

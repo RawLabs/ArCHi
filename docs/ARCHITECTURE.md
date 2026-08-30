@@ -11,7 +11,8 @@ no always-on microphone listener.
    `${XDG_RUNTIME_DIR}/archi`, starts a short Voxtype recording, and assigns a
    session id.
 2. `archi-control-stop` stops Voxtype, reads the transcript, and pipes it to
-   `router.py`.
+   `router.py`. It exports capture-session and post-stop transcript-wait timing
+   so AC/battery behavior can be compared later.
 3. `router.py` normalizes the phrase, strips an optional `ArCHi` or `archie`
    wake-style prefix, and matches the result against `commands.toml`.
 4. The matched command either replies, updates logging state, asks for
@@ -21,6 +22,9 @@ no always-on microphone listener.
    Pocket TTS-compatible endpoint, ducks other output streams while ArCHi is
    speaking, and plays the result with PipeWire. Speech jobs are serialized so
    one ArCHi response cannot duck or overwrite another response's state.
+6. When HassIL is available, it independently evaluates `intents.yaml`. The log
+   labels its relationship to production as `agree`, `shadow_extension`,
+   `shadow_regression`, `conflict`, or `not_comparable`.
 
 ## State
 
@@ -33,6 +37,7 @@ no always-on microphone listener.
   `$HOME/.local/share/archi`.
 - The active registry is `commands.toml`; the latest installed project default
   is kept separately as `commands.default.toml` for safe comparison.
+- The independent, project-managed shadow grammar is `intents.yaml`.
 
 ## Trust boundaries
 
@@ -41,7 +46,8 @@ instead of shell snippets, but a command in that file can still launch programs
 or alter the desktop. Review command changes as code.
 
 `hassil`, when installed, is used only as a shadow parser for diagnostics. Its
-result is logged for comparison and never decides which command runs.
+grammar maps only to IDs present in the trusted command registry. Its result is
+logged for comparison and never decides which command runs.
 
 Wake-word activation is out of scope for the current default setup. Adding it
 would require a separate, explicit always-on local listener and visible user
