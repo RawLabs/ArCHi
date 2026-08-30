@@ -2,4 +2,39 @@
 set -euo pipefail
 
 archi_bin_dir="${ARCHI_BIN_DIR:-$HOME/.local/bin}"
-wl-paste --no-newline | "$archi_bin_dir/pocket-tts-say"
+state_dir="${XDG_STATE_HOME:-$HOME/.local/state}/archi"
+log_path="${ARCHI_CLIPBOARD_LOG_PATH:-$state_dir/clipboard.jsonl}"
+log_dir="$(dirname -- "$log_path")"
+snapshot="$(mktemp)"
+
+cleanup() {
+  rm -f "$snapshot"
+}
+trap cleanup EXIT
+
+# Request UTF-8 text explicitly. Fall back to wl-paste's automatic selection
+# for applications that advertise text with a non-standard MIME label.
+if ! wl-paste --no-newline --type 'text/plain;charset=utf-8' > "$snapshot" 2>/dev/null; then
+  wl-paste --no-newline > "$snapshot"
+fi
+
+if [[ ! -s "$snapshot" ]]; then
+  command -v notify-send >/dev/null 2>&1 &&
+    notify-send "ArCHi" "The clipboard has no readable text." || true
+  exit 1
+fi
+
+bytes="$(wc -c < "$snapshot")"
+sha256="$(sha256sum "$snapshot" | awk '{print $1}')"
+status="spoken"
+if ! "$archi_bin_dir/pocket-tts-say" < "$snapshot"; then
+  status="tts_failed"
+fi
+
+mkdir -p "$log_dir"
+chmod 700 "$log_dir"
+printf '{"timestamp":%s,"bytes":%s,"sha256":"%s","status":"%s"}\n' \
+  "$(date +%s)" "$bytes" "$sha256" "$status" >> "$log_path"
+chmod 600 "$log_path"
+
+[[ "$status" == "spoken" ]]

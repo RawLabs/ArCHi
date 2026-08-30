@@ -215,3 +215,40 @@ exit 2
     assert curl_args[curl_args.index("--connect-timeout") + 1] == "2"
     assert player_args[player_args.index("--volume") + 1] == "1.0"
     assert not (runtime_root / "archi" / "pocket-tts-player.pid").exists()
+
+
+def test_clipboard_reader_snapshots_text_and_logs_only_metadata(tmp_path):
+    fake_bin = tmp_path / "fake-bin"
+    fake_bin.mkdir()
+    spoken = tmp_path / "spoken-text"
+    write_executable(
+        fake_bin / "wl-paste",
+        "#!/usr/bin/env bash\nprintf 'clipboard sample'\n",
+    )
+    write_executable(
+        fake_bin / "pocket-tts-say",
+        "#!/usr/bin/env bash\ncat > \"$ARCHI_TEST_SPOKEN\"\n",
+    )
+    state_root = tmp_path / "state"
+    env = {
+        **os.environ,
+        "PATH": f"{fake_bin}:{os.environ['PATH']}",
+        "ARCHI_BIN_DIR": str(fake_bin),
+        "ARCHI_TEST_SPOKEN": str(spoken),
+        "XDG_STATE_HOME": str(state_root),
+    }
+
+    subprocess.run(
+        [PROJECT_ROOT / "scripts" / "pocket-tts-read-clipboard"],
+        env=env,
+        check=True,
+    )
+
+    assert spoken.read_text() == "clipboard sample"
+    log_path = state_root / "archi" / "clipboard.jsonl"
+    event = json.loads(log_path.read_text())
+    assert event["bytes"] == len(b"clipboard sample")
+    assert len(event["sha256"]) == 64
+    assert event["status"] == "spoken"
+    assert "clipboard sample" not in log_path.read_text()
+    assert log_path.stat().st_mode & 0o777 == 0o600

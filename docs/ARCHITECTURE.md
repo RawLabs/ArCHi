@@ -33,6 +33,9 @@ no always-on microphone listener.
   `${XDG_CONFIG_HOME:-$HOME/.config}/archi/pocket-tts-volume`.
 - Command diagnostics default to
   `$HOME/.local/state/archi/commands.jsonl`, unless `ARCHI_LOG_PATH` is set.
+- Clipboard read diagnostics default to `clipboard.jsonl` beside the command
+  log. They contain only byte count, SHA-256 digest, and success/failure state;
+  clipboard text is never logged.
 - Installed router and command defaults live under `ARCHI_HOME`, defaulting to
   `$HOME/.local/share/archi`.
 - The active registry is `commands.toml`; the latest installed project default

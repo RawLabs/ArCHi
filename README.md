@@ -74,6 +74,7 @@ Useful override variables:
 - `ARCHI_COMMANDS_PATH`: command registry path;
 - `ARCHI_INTENTS_PATH`: independent HassIL diagnostic grammar path;
 - `ARCHI_LOG_PATH`: command diagnostic log path;
+- `ARCHI_CLIPBOARD_LOG_PATH`: privacy-safe clipboard read metadata log path;
 - `ARCHI_TTS_SAY`: speech helper used by the router;
 - `ARCHI_TRANSCRIPT_WAIT_TICKS`: transcript wait in tenths of a second,
   default `50` (five seconds);
@@ -101,7 +102,8 @@ arrays, never shell strings. Treat that registry as trusted configuration.
 
 The default log contains command transcripts and desktop context. Use “off
 record” before sensitive work, or set `ARCHI_LOG_PATH` to a location you
-control. Do not commit logs or voice recordings.
+control. Clipboard read diagnostics store only byte counts, hashes, and status,
+never clipboard text. Do not commit logs or voice recordings.
 
 ## Project layout
 
