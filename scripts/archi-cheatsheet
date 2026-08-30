@@ -18,9 +18,6 @@ BINDINGS = [
     ("Super + Shift + V", "read the clipboard aloud"),
     ("Super + Ctrl + Up", "raise ArCHi voice volume"),
     ("Super + Ctrl + Down", "lower ArCHi voice volume"),
-    ("F9", "legacy dictation push-to-talk"),
-    ("Super + Ctrl + X", "legacy dictation toggle"),
-    ("Copilot / Super + Space", "open the Omarchy app menu"),
 ]
 
 

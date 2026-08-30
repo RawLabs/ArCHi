@@ -17,9 +17,6 @@ and the phrases accepted by the deterministic production router. Run
 | `Super + Shift + V` | Normal desktop | Read clipboard aloud |
 | `Super + Ctrl + Up` | Normal desktop | Raise ArCHi's voice volume |
 | `Super + Ctrl + Down` | Normal desktop | Lower ArCHi's voice volume |
-| `F9` | Normal desktop | Legacy dictation push-to-talk |
-| `Super + Ctrl + X` | Normal desktop | Legacy dictation toggle |
-| Copilot key / `Super + Space` | Normal desktop | Open the Omarchy app menu |
 
 `Super + R` and `Super + Shift + R` are the preferred one-hand paths. The
 standalone `Enter` and `Escape` actions only apply after their mode has begun.
