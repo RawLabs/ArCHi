@@ -1,0 +1,173 @@
+# ArCHi's allowlisted command registry. Actions are argv arrays, never shell text.
+
+[[commands]]
+id = "open_terminal"
+phrases = ["open terminal", "launch terminal", "start terminal"]
+action = "launch"
+argv = ["omarchy-launch-terminal"]
+reply = "Opening terminal."
+
+[[commands]]
+id = "open_browser"
+phrases = ["open browser", "launch browser", "start browser", "open web browser"]
+action = "launch"
+argv = ["omarchy-launch-browser"]
+reply = "Opening browser."
+
+[[commands]]
+id = "open_default_agent"
+phrases = ["open agent", "launch agent", "start agent", "open omarchy agent", "open default agent"]
+action = "launch"
+argv = ["omarchy-agent"]
+reply = "Opening the default Omarchy agent."
+
+[[commands]]
+id = "open_files"
+phrases = ["open files", "open file manager", "launch file manager", "start files"]
+action = "launch"
+argv = ["omarchy-launch-nautilus"]
+reply = "Opening files."
+
+[[commands]]
+id = "open_home"
+phrases = ["open home", "open home folder", "open my home folder"]
+action = "launch"
+argv = ["xdg-open", "{home}"]
+reply = "Opening home."
+
+[[commands]]
+id = "open_downloads"
+phrases = ["open downloads", "open downloads folder"]
+action = "launch"
+argv = ["xdg-open", "{home}/Downloads"]
+reply = "Opening downloads."
+
+[[commands]]
+id = "volume_up"
+phrases = ["volume up", "turn volume up", "make it louder", "louder"]
+action = "run"
+argv = ["omarchy-audio-output-volume", "raise"]
+reply = "Volume up."
+
+[[commands]]
+id = "volume_down"
+phrases = ["volume down", "turn volume down", "make it quieter", "quieter"]
+action = "run"
+argv = ["omarchy-audio-output-volume", "lower"]
+reply = "Volume down."
+
+[[commands]]
+id = "mute"
+phrases = ["mute", "mute audio", "mute volume"]
+action = "run"
+argv = ["omarchy-audio-output-volume", "mute-toggle"]
+reply = "Audio mute toggled."
+
+[[commands]]
+id = "lock_computer"
+phrases = ["lock computer", "lock the computer", "lock screen", "lock the screen"]
+action = "run"
+argv = ["loginctl", "lock-session"]
+reply = "Locking computer."
+reply_before = true
+
+[[commands]]
+id = "take_screenshot"
+phrases = ["take screenshot", "take a screenshot", "screenshot", "capture screenshot"]
+action = "launch"
+argv = ["omarchy-capture-screenshot"]
+reply = "Taking a screenshot."
+reply_before = true
+
+[[commands]]
+id = "close_active_window"
+phrases = ["close this window", "close current window", "close active window", "close the active window", "close window", "dismiss this window"]
+action = "run"
+argv = ["hyprctl", "dispatch", "hl.dsp.window.close()"]
+reply = "Closing window."
+
+[[commands]]
+id = "close_terminal"
+phrases = ["close terminal", "quit terminal", "exit terminal"]
+action = "run"
+argv = ["{archi_bin}/archi-close-target", "terminal"]
+reply = "Closing terminal."
+
+[[commands]]
+id = "close_browser"
+phrases = ["close browser", "quit browser", "exit browser"]
+action = "run"
+argv = ["{archi_bin}/archi-close-target", "browser"]
+reply = "Closing browser."
+
+[[commands]]
+id = "close_files"
+phrases = ["close files", "quit files", "close file manager"]
+action = "run"
+argv = ["{archi_bin}/archi-close-target", "files"]
+reply = "Closing files."
+
+[[commands]]
+id = "close_clarify"
+phrases = ["close", "quit", "exit", "dismiss"]
+action = "clarify"
+prompt = "What should I close: terminal, browser, files, or this window?"
+targets = { terminal = "close_terminal", browser = "close_browser", files = "close_files", window = "close_active_window" }
+
+[[commands]]
+id = "read_clipboard"
+phrases = ["read clipboard", "read clipboard aloud", "read this aloud", "speak clipboard", "read that aloud"]
+action = "launch"
+argv = ["{archi_bin}/pocket-tts-read-clipboard"]
+reply = ""
+
+[[commands]]
+id = "stop_speaking"
+phrases = ["stop speaking", "stop talking", "shut up", "silence", "cancel speech"]
+action = "run"
+argv = ["{archi_bin}/archi-stop-speaking"]
+reply = ""
+
+[[commands]]
+id = "off_record"
+phrases = ["off record", "off the record", "private mode"]
+action = "mode_off_record"
+reply = "Logging off."
+
+[[commands]]
+id = "logging_on"
+phrases = ["logging on", "back on record", "back on the record", "resume logging"]
+action = "mode_logging_on"
+reply = "Logging on."
+
+[[commands]]
+id = "next_workspace"
+phrases = ["next workspace", "switch to next workspace"]
+action = "run"
+argv = ["hyprctl", "dispatch", "hl.dsp.focus({ workspace = \"e+1\" })"]
+reply = "Next workspace."
+
+[[commands]]
+id = "previous_workspace"
+phrases = ["previous workspace", "last workspace", "switch to previous workspace"]
+action = "run"
+argv = ["hyprctl", "dispatch", "hl.dsp.focus({ workspace = \"e-1\" })"]
+reply = "Previous workspace."
+
+[[commands]]
+id = "identity"
+phrases = ["what are you", "who are you", "identify yourself"]
+action = "reply"
+reply = "I'm ArCHi."
+
+[[commands]]
+id = "help"
+phrases = ["help", "what can you do"]
+action = "reply"
+reply = "I can open apps, control audio, take screenshots, manage windows, read the clipboard, lock the computer, switch workspaces, and control logging."
+
+[[commands]]
+id = "list_commands"
+phrases = ["list commands", "show commands", "what commands do you know", "command list"]
+action = "reply"
+reply = "Commands include opening terminal, browser, files, home, and downloads; volume up, volume down, and mute; screenshots; locking; closing windows, terminals, browsers, and files; reading the clipboard; stopping speech; switching workspaces; and controlling logging."

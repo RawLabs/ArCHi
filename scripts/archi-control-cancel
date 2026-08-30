@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+voxtype record cancel
+rm -f "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/archi/control-transcript.txt"

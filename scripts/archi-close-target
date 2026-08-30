@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+target="${1:-}"
+class="$(hyprctl activewindow -j | jq -r '.class // ""')"
+
+case "$target" in
+  terminal) [[ "$class" =~ ^(org\.codeberg\.dnkl\.foot|org\.omarchy\.terminal)$ ]] ;;
+  browser) [[ "$class" =~ ^(chromium|google-chrome|firefox|brave-browser|microsoft-edge|zen)$ ]] ;;
+  files) [[ "$class" =~ ^(org\.gnome\.Nautilus|org\.gnome\.NautilusPreviewer)$ ]] ;;
+  *) exit 2 ;;
+esac
+
+hyprctl dispatch 'hl.dsp.window.close()'

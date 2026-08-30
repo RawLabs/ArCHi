@@ -1,0 +1,108 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if (($# > 0)); then
+  text="$*"
+elif [[ ! -t 0 ]]; then
+  text="$(cat)"
+else
+  printf 'Usage: pocket-tts-say "text" or printf %s text \\| pocket-tts-say\n' "$0" >&2
+  exit 2
+fi
+
+if [[ -z "${text//[[:space:]]/}" ]]; then
+  exit 0
+fi
+
+url="${POCKET_TTS_URL:-http://127.0.0.1:8000/tts}"
+voice="${POCKET_TTS_VOICE:-alba}"
+archi_home="${ARCHI_HOME:-$HOME/.local/share/archi}"
+voice_file="${POCKET_TTS_VOICE_FILE:-$archi_home/assets/voice.wav}"
+config_dir="${XDG_CONFIG_HOME:-$HOME/.config}/archi"
+volume_file="$config_dir/pocket-tts-volume"
+tts_volume="${POCKET_TTS_VOLUME:-}"
+if [[ -z "$tts_volume" && -r "$volume_file" ]]; then
+  read -r tts_volume < "$volume_file" || true
+fi
+if ! awk -v volume="${tts_volume:-1.0}" 'BEGIN { exit !(volume >= 0 && volume <= 1) }'; then
+  tts_volume="1.0"
+fi
+tts_volume="${tts_volume:-1.0}"
+audio="$(mktemp --suffix=.wav)"
+runtime_dir="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/archi"
+player_pid_file="$runtime_dir/pocket-tts-player.pid"
+player_pid=""
+duck_factor="${POCKET_TTS_DUCK_FACTOR:-0.25}"
+ducked_streams=()
+
+duck_streams() {
+  command -v pw-dump wpctl jq >/dev/null 2>&1 || return 0
+  while IFS= read -r stream_id; do
+    [[ "$stream_id" =~ ^[0-9]+$ ]] || continue
+    local original_volume
+    original_volume="$(wpctl get-volume "$stream_id" 2>/dev/null | awk '/Volume:/{print $2; exit}')"
+    [[ "$original_volume" =~ ^[0-9]+([.][0-9]+)?$ ]] || continue
+    local ducked_volume
+    ducked_volume="$(awk -v volume="$original_volume" -v factor="$duck_factor" 'BEGIN { printf "%.4f", volume * factor }')"
+    if wpctl set-volume "$stream_id" "$ducked_volume" >/dev/null 2>&1; then
+      ducked_streams+=("$stream_id:$original_volume:$ducked_volume")
+    fi
+  done < <(pw-dump Node 2>/dev/null | jq -r '
+    .[]
+    | select(.info.props["media.class"] == "Stream/Output/Audio")
+    | .id
+  ' 2>/dev/null)
+}
+
+restore_streams() {
+  local entry stream_id original_volume ducked_volume current_volume
+  for entry in "${ducked_streams[@]}"; do
+    IFS=: read -r stream_id original_volume ducked_volume <<< "$entry"
+    current_volume="$(wpctl get-volume "$stream_id" 2>/dev/null | awk '/Volume:/{print $2; exit}')"
+    # Do not overwrite a volume adjustment made while ArCHi was speaking.
+    # wpctl rounds its human-readable volume output to two decimal places.
+    # Allow half of that display precision so a normal duck (for example,
+    # 0.25 -> 0.0625 reported as 0.06) is restored correctly.
+    if awk -v current="$current_volume" -v expected="$ducked_volume" \
+      'BEGIN { exit !(current >= expected - 0.0051 && current <= expected + 0.0051) }'; then
+      wpctl set-volume "$stream_id" "$original_volume" >/dev/null 2>&1 || true
+    fi
+  done
+}
+
+cleanup() {
+  if [[ -n "$player_pid" ]]; then
+    kill "$player_pid" 2>/dev/null || true
+  fi
+  restore_streams
+  rm -f "$player_pid_file" "$audio"
+}
+trap cleanup EXIT
+
+curl_args=(
+  --fail --silent --show-error --max-time 120
+  --form-string "text=$text"
+)
+if [[ -f "$voice_file" ]]; then
+  curl_args+=(--form "voice_wav=@$voice_file")
+  if ! curl "${curl_args[@]}" "$url" --output "$audio"; then
+    printf 'Custom voice unavailable; falling back to %s.\n' "$voice" >&2
+    curl --fail --silent --show-error --max-time 120 \
+      --form-string "text=$text" \
+      --form-string "voice_url=$voice" \
+      "$url" \
+      --output "$audio"
+  fi
+else
+  curl_args+=(--form-string "voice_url=$voice")
+  curl "${curl_args[@]}" "$url" --output "$audio"
+fi
+
+mkdir -p "$runtime_dir"
+chmod 700 "$runtime_dir"
+duck_streams
+pw-play --media-role Communication --volume "$tts_volume" "$audio" &
+player_pid=$!
+printf '%s\n' "$player_pid" > "$player_pid_file"
+wait "$player_pid" || true
+player_pid=""

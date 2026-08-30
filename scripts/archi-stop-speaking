@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+pid_file="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/archi/pocket-tts-player.pid"
+if [[ -r "$pid_file" ]]; then
+  read -r pid < "$pid_file" || true
+  if [[ "${pid:-}" =~ ^[0-9]+$ ]]; then
+    kill "$pid" 2>/dev/null || true
+  fi
+  rm -f "$pid_file"
+fi

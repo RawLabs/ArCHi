@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+runtime_dir="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/archi"
+archi_home="${ARCHI_HOME:-$HOME/.local/share/archi}"
+transcript="$runtime_dir/control-transcript.txt"
+session_file="$runtime_dir/control-session-id"
+voxtype record stop
+
+for _ in $(seq 1 900); do
+  [[ -e "$transcript" || ! -e "$session_file" ]] && break
+  sleep 0.1
+done
+
+session_id=""
+if [[ -e "$session_file" ]]; then
+  session_id="$(<"$session_file")"
+  rm -f "$session_file"
+fi
+
+if [[ ! -e "$transcript" ]]; then
+  ARCHI_SESSION_ID="$session_id" python3 "$archi_home/router.py" --silent
+  exit 0
+fi
+
+text="$(<"$transcript")"
+rm -f "$transcript"
+if [[ -z "${text//[[:space:]]/}" ]]; then
+  ARCHI_SESSION_ID="$session_id" python3 "$archi_home/router.py" --silent
+else
+  printf '%s' "$text" | ARCHI_SESSION_ID="$session_id" python3 "$archi_home/router.py"
+fi

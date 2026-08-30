@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "archi-assist"
+version = "0.1.0"
+description = "A deterministic, push-to-talk desktop command layer for Omarchy and Hyprland"
+requires-python = ">=3.11"
+authors = [{ name = "ArCHi contributors" }]
+readme = "README.md"
+classifiers = [
+  "Development Status :: 2 - Pre-Alpha",
+  "Environment :: X11 Applications :: Wayland",
+  "Intended Audience :: End Users/Desktop",
+  "Operating System :: POSIX :: Linux",
+  "Programming Language :: Python :: 3",
+]
+
+[project.optional-dependencies]
+intent = ["hassil>=3"]
+dev = ["pytest>=8"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]

@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+action="${1:-}"
+case "$action" in
+  raise) delta="0.05" ;;
+  lower) delta="-0.05" ;;
+  status) delta="" ;;
+  *)
+    printf 'Usage: %s <raise|lower|status>\n' "$0" >&2
+    exit 2
+    ;;
+esac
+
+config_dir="${XDG_CONFIG_HOME:-$HOME/.config}/archi"
+volume_file="$config_dir/pocket-tts-volume"
+current="1.0"
+if [[ -r "$volume_file" ]]; then
+  read -r current < "$volume_file" || true
+fi
+if ! awk -v volume="$current" 'BEGIN { exit !(volume >= 0 && volume <= 1) }'; then
+  current="1.0"
+fi
+
+next="$current"
+if [[ "$action" != "status" ]]; then
+  next="$(awk -v current="$current" -v delta="$delta" 'BEGIN {
+    volume = current + delta
+    if (volume < 0) volume = 0
+    if (volume > 1) volume = 1
+    printf "%.2f", volume
+  }')"
+
+  mkdir -p "$config_dir"
+  printf '%s\n' "$next" > "$volume_file"
+fi
+
+# Apply the new level to an in-progress ArCHi response as well as saving it
+# for the next one.  The PID file is maintained by pocket-tts-say and points
+# only at its pw-play process, never at the system audio sink.
+player_pid_file="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/archi/pocket-tts-player.pid"
+if [[ -r "$player_pid_file" ]]; then
+  read -r player_pid < "$player_pid_file" || true
+  if [[ "${player_pid:-}" =~ ^[0-9]+$ ]] && kill -0 "$player_pid" 2>/dev/null; then
+    speaking="speaking"
+    if [[ "$action" != "status" ]]; then
+      wpctl set-volume --pid "$player_pid" "$next" >/dev/null 2>&1 || true
+    fi
+  fi
+fi
+
+percent="$(awk -v volume="$next" 'BEGIN { printf "%d", volume * 100 + 0.5 }')"
+icon="volume-high"
+speaking="${speaking:-idle}"
+if ((percent == 0)); then
+  icon="volume-muted"
+  db="muted"
+else
+  db="$(awk -v volume="$next" 'BEGIN { printf "%.1f dB", 20 * log(volume) / log(10) }')"
+fi
+omarchy-osd -i "$icon" -m "ArCHi voice: $speaking · ${percent}% · $db" -p "$percent"

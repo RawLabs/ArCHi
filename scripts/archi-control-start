@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+runtime_dir="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/archi"
+transcript="$runtime_dir/control-transcript.txt"
+session_id="$(python3 -c 'import uuid; print(uuid.uuid4().hex)')"
+mkdir -p "$runtime_dir"
+chmod 700 "$runtime_dir"
+rm -f "$transcript"
+printf '%s' "$session_id" > "$runtime_dir/control-session-id"
+chmod 600 "$runtime_dir/control-session-id"
+voxtype record start --file="$transcript"
