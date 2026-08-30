@@ -63,6 +63,10 @@ This installs scripts to `~/.local/bin` and ArCHi data to
 `~/.local/share/archi`. It does not overwrite an existing command registry and
 does not add keybindings automatically. See [installation notes](docs/INSTALL.md).
 
+Every install refreshes `commands.default.toml` for comparison. To replace an
+existing active registry with the current defaults, while preserving a
+timestamped backup, run `./install.sh --refresh-registry`.
+
 Useful override variables:
 
 - `ARCHI_HOME`: installed ArCHi data directory, default `~/.local/share/archi`;
@@ -70,8 +74,24 @@ Useful override variables:
 - `ARCHI_COMMANDS_PATH`: command registry path;
 - `ARCHI_LOG_PATH`: command diagnostic log path;
 - `ARCHI_TTS_SAY`: speech helper used by the router;
+- `ARCHI_TRANSCRIPT_WAIT_TICKS`: transcript wait in tenths of a second,
+  default `50` (five seconds);
 - `POCKET_TTS_URL`, `POCKET_TTS_VOICE`, `POCKET_TTS_VOICE_FILE`, and
-  `POCKET_TTS_VOLUME`: speech endpoint, voice, voice sample, and volume.
+  `POCKET_TTS_VOLUME`: speech endpoint, voice, voice sample, and volume;
+- `POCKET_TTS_TIMEOUT_SECONDS`: timeout for each TTS request, default `15`;
+- `POCKET_TTS_DUCK_FACTOR`: volume multiplier for other playback while ArCHi
+  speaks, default `0.25`.
+
+The custom voice file is optional. Put a private sample at `assets/voice.wav`
+before installing, or set `POCKET_TTS_VOICE_FILE`; otherwise ArCHi requests the
+configured named voice, which defaults to `alba`.
+
+To enable optional HassIL shadow comparison without modifying the system
+Python environment:
+
+```bash
+uv pip install --target "${ARCHI_HOME:-$HOME/.local/share/archi}/vendor" 'hassil>=3,<4'
+```
 
 ## Safety and privacy
 

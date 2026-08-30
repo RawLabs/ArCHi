@@ -5,9 +5,13 @@ runtime_dir="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/archi"
 archi_home="${ARCHI_HOME:-$HOME/.local/share/archi}"
 transcript="$runtime_dir/control-transcript.txt"
 session_file="$runtime_dir/control-session-id"
+wait_ticks="${ARCHI_TRANSCRIPT_WAIT_TICKS:-50}"
+if [[ ! "$wait_ticks" =~ ^[0-9]+$ ]] || ((wait_ticks < 1 || wait_ticks > 600)); then
+  wait_ticks=50
+fi
 voxtype record stop
 
-for _ in $(seq 1 900); do
+for ((attempt = 0; attempt < wait_ticks; attempt++)); do
   [[ -e "$transcript" || ! -e "$session_file" ]] && break
   sleep 0.1
 done

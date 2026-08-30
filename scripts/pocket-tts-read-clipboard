@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-text="$(wl-paste --no-newline)"
-[[ -n "${text//[[:space:]]/}" ]] || exit 0
 archi_bin_dir="${ARCHI_BIN_DIR:-$HOME/.local/bin}"
-exec "$archi_bin_dir/pocket-tts-say" "$text"
+wl-paste --no-newline | "$archi_bin_dir/pocket-tts-say"

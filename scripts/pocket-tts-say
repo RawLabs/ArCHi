@@ -24,15 +24,25 @@ tts_volume="${POCKET_TTS_VOLUME:-}"
 if [[ -z "$tts_volume" && -r "$volume_file" ]]; then
   read -r tts_volume < "$volume_file" || true
 fi
-if ! awk -v volume="${tts_volume:-1.0}" 'BEGIN { exit !(volume >= 0 && volume <= 1) }'; then
+if [[ ! "${tts_volume:-1.0}" =~ ^[0-9]+([.][0-9]+)?$ ]] ||
+  ! awk -v volume="${tts_volume:-1.0}" 'BEGIN { exit !(volume >= 0 && volume <= 1) }'; then
   tts_volume="1.0"
 fi
 tts_volume="${tts_volume:-1.0}"
-audio="$(mktemp --suffix=.wav)"
 runtime_dir="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/archi"
 player_pid_file="$runtime_dir/pocket-tts-player.pid"
 player_pid=""
 duck_factor="${POCKET_TTS_DUCK_FACTOR:-0.25}"
+if [[ ! "$duck_factor" =~ ^[0-9]+([.][0-9]+)?$ ]] ||
+  ! awk -v factor="$duck_factor" 'BEGIN { exit !(factor >= 0 && factor <= 1) }'; then
+  duck_factor="0.25"
+fi
+tts_timeout="${POCKET_TTS_TIMEOUT_SECONDS:-15}"
+if [[ ! "$tts_timeout" =~ ^[0-9]+$ ]] || ((tts_timeout < 1 || tts_timeout > 120)); then
+  tts_timeout=15
+fi
+audio="$(mktemp --suffix=.wav)"
+text_file="$(mktemp)"
 ducked_streams=()
 
 duck_streams() {
@@ -50,6 +60,7 @@ duck_streams() {
   done < <(pw-dump Node 2>/dev/null | jq -r '
     .[]
     | select(.info.props["media.class"] == "Stream/Output/Audio")
+    | select(.info.props["media.role"] != "Communication")
     | .id
   ' 2>/dev/null)
 }
@@ -75,20 +86,26 @@ cleanup() {
     kill "$player_pid" 2>/dev/null || true
   fi
   restore_streams
-  rm -f "$player_pid_file" "$audio"
+  rm -f "$player_pid_file" "$audio" "$text_file"
 }
 trap cleanup EXIT
 
+mkdir -p "$runtime_dir"
+chmod 700 "$runtime_dir"
+exec 9>"$runtime_dir/pocket-tts.lock"
+flock 9
+printf '%s' "$text" > "$text_file"
+
 curl_args=(
-  --fail --silent --show-error --max-time 120
-  --form-string "text=$text"
+  --fail --silent --show-error --connect-timeout 2 --max-time "$tts_timeout"
+  --form "text=<$text_file"
 )
 if [[ -f "$voice_file" ]]; then
   curl_args+=(--form "voice_wav=@$voice_file")
   if ! curl "${curl_args[@]}" "$url" --output "$audio"; then
     printf 'Custom voice unavailable; falling back to %s.\n' "$voice" >&2
-    curl --fail --silent --show-error --max-time 120 \
-      --form-string "text=$text" \
+    curl --fail --silent --show-error --connect-timeout 2 --max-time "$tts_timeout" \
+      --form "text=<$text_file" \
       --form-string "voice_url=$voice" \
       "$url" \
       --output "$audio"
@@ -98,8 +115,6 @@ else
   curl "${curl_args[@]}" "$url" --output "$audio"
 fi
 
-mkdir -p "$runtime_dir"
-chmod 700 "$runtime_dir"
 duck_streams
 pw-play --media-role Communication --volume "$tts_volume" "$audio" &
 player_pid=$!

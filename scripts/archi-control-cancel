@@ -2,4 +2,5 @@
 set -euo pipefail
 
 voxtype record cancel
-rm -f "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/archi/control-transcript.txt"
+runtime_dir="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/archi"
+rm -f "$runtime_dir/control-transcript.txt" "$runtime_dir/control-session-id"

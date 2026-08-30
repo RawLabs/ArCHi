@@ -19,7 +19,8 @@ no always-on microphone listener.
    command.
 5. Spoken responses go through `pocket-tts-say`, which calls the configured
    Pocket TTS-compatible endpoint, ducks other output streams while ArCHi is
-   speaking, and plays the result with PipeWire.
+   speaking, and plays the result with PipeWire. Speech jobs are serialized so
+   one ArCHi response cannot duck or overwrite another response's state.
 
 ## State
 
@@ -30,6 +31,8 @@ no always-on microphone listener.
   `$HOME/.local/state/archi/commands.jsonl`, unless `ARCHI_LOG_PATH` is set.
 - Installed router and command defaults live under `ARCHI_HOME`, defaulting to
   `$HOME/.local/share/archi`.
+- The active registry is `commands.toml`; the latest installed project default
+  is kept separately as `commands.default.toml` for safe comparison.
 
 ## Trust boundaries
 
