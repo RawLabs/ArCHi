@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "archi-assist"
-version = "0.1.0"
-description = "A deterministic, push-to-talk desktop command layer for Omarchy and Hyprland"
+version = "0.1.0b1"
+description = "A local, deterministic accessibility control plane for Linux"
 requires-python = ">=3.11"
 authors = [{ name = "ArCHi contributors" }]
 readme = "README.md"

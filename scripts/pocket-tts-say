@@ -43,9 +43,9 @@ if [[ ! "$duck_factor" =~ ^[0-9]+([.][0-9]+)?$ ]] ||
   ! awk -v factor="$duck_factor" 'BEGIN { exit !(factor >= 0 && factor <= 1) }'; then
   duck_factor="0.25"
 fi
-tts_timeout="${POCKET_TTS_TIMEOUT_SECONDS:-15}"
+tts_timeout="${POCKET_TTS_TIMEOUT_SECONDS:-60}"
 if [[ ! "$tts_timeout" =~ ^[0-9]+$ ]] || ((tts_timeout < 1 || tts_timeout > 120)); then
-  tts_timeout=15
+  tts_timeout=60
 fi
 audio="$(mktemp --suffix=.wav)"
 text_file="$(mktemp)"

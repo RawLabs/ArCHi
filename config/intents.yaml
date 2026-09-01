@@ -3,7 +3,7 @@
 language: en
 
 intents:
-  OpenItem:
+  OpenFolder:
     data:
       - sentences:
           - "(open|launch|start) [the|my] {open_target:command_id}"
@@ -34,9 +34,25 @@ intents:
     data:
       - sentences:
           - "mute [the] [audio|volume|sound]"
-          - "toggle [the] mute"
+          - "turn [the] (audio|volume|sound) off"
         slots:
           command_id: mute
+
+  UnmuteAudio:
+    data:
+      - sentences:
+          - "unmute [the] [audio|volume|sound]"
+          - "turn [the] (audio|volume|sound) on"
+        slots:
+          command_id: unmute
+
+  ToggleMute:
+    data:
+      - sentences:
+          - "toggle [the] mute"
+          - "toggle [the] (audio|volume|sound) mute"
+        slots:
+          command_id: toggle_mute
 
   LockComputer:
     data:
@@ -54,7 +70,7 @@ intents:
         slots:
           command_id: take_screenshot
 
-  CloseTarget:
+  CloseFolder:
     data:
       - sentences:
           - "(close|quit|exit|dismiss) [the] {close_target:command_id}"
@@ -142,14 +158,6 @@ intents:
 lists:
   open_target:
     values:
-      - in: "(terminal|console)"
-        out: open_terminal
-      - in: "(browser|web browser|internet browser)"
-        out: open_browser
-      - in: "(agent|omarchy agent|default agent)"
-        out: open_default_agent
-      - in: "(files|file manager)"
-        out: open_files
       - in: "home [folder]"
         out: open_home
       - in: "downloads [folder]"
@@ -157,12 +165,10 @@ lists:
 
   close_target:
     values:
-      - in: "terminal [window]"
-        out: close_terminal
-      - in: "browser [window]"
-        out: close_browser
-      - in: "(files|file manager)"
-        out: close_files
+      - in: "home [folder]"
+        out: close_home
+      - in: "downloads [folder]"
+        out: close_downloads
 
   workspace_direction:
     values:

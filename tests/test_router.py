@@ -5,6 +5,25 @@ from pathlib import Path
 import pytest
 
 from archi import router
+from archi.adapters.base import ActionResult
+from archi.adapters.omarchy import OmarchyDesktopAdapter
+
+
+@pytest.fixture(autouse=True)
+def isolated_app_registry(monkeypatch, tmp_path):
+    applications = tmp_path / "applications"
+    applications.mkdir()
+    (applications / "cliamp.desktop").write_text(
+        """[Desktop Entry]
+Type=Application
+Name=cliamp
+GenericName=Music Player
+Exec=cliamp
+Terminal=true
+"""
+    )
+    monkeypatch.setenv("ARCHI_APPLICATION_DIRS", str(applications))
+    return applications
 
 
 @pytest.fixture
@@ -37,12 +56,33 @@ def test_normalize_removes_archi_name_and_politeness():
     assert router.normalize("archie volume up") == "volume up"
 
 
+def test_normalize_removes_verbal_stop_terminator():
+    assert router.normalize("open terminal, ArCHi stop") == "open terminal"
+    assert router.normalize("ArChie, stop") == ""
+
+
+def test_verbal_stop_without_a_command_is_silent(isolated_router):
+    result = router.route("ArChI stop", dry_run=True)
+    assert result == {"status": "silent", "reason": "empty_command"}
+    assert read_events(isolated_router)[0]["silent_reason"] == "empty_command"
+
+
 def test_registry_loads():
     by_phrase, by_id = router.load_commands()
-    assert by_phrase["open terminal"]["id"] == "open_terminal"
+    assert by_phrase["open cliamp"]["id"] == "open_app:cliamp.desktop"
+    assert by_phrase["close cliamp"]["id"] == "close_app:cliamp.desktop"
+    assert by_phrase["open music player"]["capability"] == "app.open"
+    assert by_phrase["open music player"]["payload"]["launcher_id"] == "cliamp"
+    assert by_phrase["close home"]["id"] == "close_home"
+    assert by_phrase["close downloads"]["id"] == "close_downloads"
+    assert by_phrase["mute"]["id"] == "mute"
+    assert by_phrase["unmute"]["id"] == "unmute"
+    assert by_phrase["turn volume on"]["id"] == "unmute"
+    assert by_phrase["toggle mute"]["id"] == "toggle_mute"
     assert "identity" in by_id
     assert set(command["action"] for command in by_id.values()) <= {
         "clarify",
+        "capability",
         "launch",
         "mode_logging_on",
         "mode_off_record",
@@ -53,6 +93,54 @@ def test_registry_loads():
         if command["action"] in {"launch", "run"}:
             assert command.get("argv")
             assert all(isinstance(argument, str) for argument in command["argv"])
+        if command["action"] == "capability":
+            assert command.get("capability")
+            assert "argv" not in command
+
+
+def test_open_commands_have_matching_close_commands():
+    _, by_id = router.load_commands()
+    app_ids = {command["desktop_id"] for command in by_id.values() if command.get("desktop_id")}
+    for desktop_id in app_ids:
+        assert f"open_app:{desktop_id}" in by_id
+        assert f"close_app:{desktop_id}" in by_id
+
+
+def test_desktop_registry_refreshes_on_each_load(isolated_app_registry):
+    by_phrase, _ = router.load_commands()
+    assert "open fresh app" not in by_phrase
+
+    (isolated_app_registry / "fresh.desktop").write_text(
+        "[Desktop Entry]\nType=Application\nName=Fresh App\nExec=fresh-app\n"
+    )
+    by_phrase, _ = router.load_commands()
+    assert by_phrase["open fresh app"]["payload"]["launcher_id"] == "fresh"
+    assert by_phrase["close fresh app"]["capability"] == "app.close"
+
+
+def test_hidden_user_entry_suppresses_same_system_app(monkeypatch, tmp_path):
+    user_apps = tmp_path / "user"
+    system_apps = tmp_path / "system"
+    user_apps.mkdir()
+    system_apps.mkdir()
+    (user_apps / "hidden.desktop").write_text(
+        "[Desktop Entry]\nType=Application\nName=Hidden App\nHidden=true\n"
+    )
+    (system_apps / "hidden.desktop").write_text(
+        "[Desktop Entry]\nType=Application\nName=Hidden App\nExec=hidden-app\n"
+    )
+    monkeypatch.setenv("ARCHI_APPLICATION_DIRS", f"{user_apps}{os.pathsep}{system_apps}")
+    by_phrase, _ = router.load_commands()
+    assert "open hidden app" not in by_phrase
+
+
+def test_shared_app_alias_is_not_routed_ambiguously(isolated_app_registry):
+    (isolated_app_registry / "other.desktop").write_text(
+        "[Desktop Entry]\nType=Application\nName=Other Player\nGenericName=Music Player\nExec=other\n"
+    )
+    by_phrase, _ = router.load_commands()
+    assert "open music player" not in by_phrase
+    assert by_phrase["open cliamp"]["desktop_id"] == "cliamp.desktop"
 
 
 def test_duplicate_registry_phrase_is_rejected(monkeypatch, tmp_path):
@@ -95,18 +183,46 @@ def test_capture_context_validates_wrapper_timings(monkeypatch):
 
 
 def test_successful_route_is_logged(isolated_router):
-    result = router.route("ArCHi, can you open terminal?", dry_run=True)
+    result = router.route("ArCHi, can you open cliamp?", dry_run=True)
     assert result["status"] == "success"
-    assert result["command_id"] == "open_terminal"
+    assert result["command_id"] == "open_app:cliamp.desktop"
 
     events = read_events(isolated_router)
     assert len(events) == 1
-    assert events[0]["transcript"] == "ArCHi, can you open terminal?"
-    assert events[0]["normalized_phrase"] == "open terminal"
-    assert events[0]["matched_command_id"] == "open_terminal"
+    assert events[0]["transcript"] == "ArCHi, can you open cliamp?"
+    assert events[0]["normalized_phrase"] == "open cliamp"
+    assert events[0]["matched_command_id"] == "open_app:cliamp.desktop"
     assert events[0]["execution_status"] == "success"
     assert events[0]["schema_version"] == router.SCHEMA_VERSION
     assert os.stat(isolated_router).st_mode & 0o777 == 0o600
+
+
+@pytest.mark.parametrize(
+    ("phrase", "command_id"),
+    [
+        ("open c l i a m p", "open_app:cliamp.desktop"),
+        ("close c l i a m p", "close_app:cliamp.desktop"),
+        ("openclamp", "open_app:cliamp.desktop"),
+        ("closeclimp", "close_app:cliamp.desktop"),
+    ],
+)
+def test_dynamic_app_matching_accepts_spaced_letters_and_small_transcription_errors(
+    isolated_router, phrase, command_id
+):
+    result = router.route(phrase, dry_run=True)
+    assert result["status"] == "success"
+    assert result["command_id"] == command_id
+    assert read_events(isolated_router)[0]["matched_alias"] == "cliamp"
+
+
+def test_dynamic_app_matching_treats_q_c_and_k_as_phonetic_equivalents(isolated_app_registry, isolated_router):
+    (isolated_app_registry / "qamera.desktop").write_text(
+        "[Desktop Entry]\nType=Application\nName=Qamera\nExec=qamera\n"
+    )
+
+    result = router.route("open kamera", dry_run=True)
+    assert result["status"] == "success"
+    assert result["command_id"] == "open_app:qamera.desktop"
 
 
 def test_unknown_route_is_logged_without_execution(isolated_router, monkeypatch):
@@ -124,37 +240,67 @@ def test_unknown_route_is_logged_without_execution(isolated_router, monkeypatch)
     assert read_events(isolated_router)[0]["execution_status"] == "not_run"
 
 
+def test_route_reports_heard_and_success_feedback(isolated_router, monkeypatch):
+    events = []
+    monkeypatch.setattr(router, "show_feedback", lambda *args: events.append(args))
+    monkeypatch.setattr(
+        router,
+        "execute",
+        lambda command, _dry_run: ActionResult("success", "test", command.get("capability", "test")),
+    )
+
+    result = router.route("open cliamp", dry_run=False)
+
+    assert result["status"] == "success"
+    assert events == [
+        ("heard", "Heard: open cliamp", 1000, False),
+        ("success", "Opening cliamp.", 1300, False),
+    ]
+
+
+def test_feedback_phrase_limits_long_transcripts():
+    phrase = "a" * 81
+    assert router.feedback_phrase(phrase) == f"{'a' * 77}..."
+
+
 def test_clarification_routes_only_an_allowlisted_target(isolated_router, monkeypatch):
     executed_ids = []
     monkeypatch.setattr(
         router,
         "execute",
-        lambda command, _dry_run: not executed_ids.append(command["id"]),
+        lambda command, _dry_run: (
+            executed_ids.append(command["id"])
+            or ActionResult("success", "test", command.get("capability", "test"))
+        ),
     )
 
     first = router.route("close")
     assert first["status"] == "clarifying"
     assert router.PENDING_PATH.exists()
 
-    second = router.route("terminal")
+    second = router.route("home")
     assert second["status"] == "success"
-    assert second["command_id"] == "close_terminal"
-    assert executed_ids == ["close_terminal"]
+    assert second["command_id"] == "close_home"
+    assert executed_ids == ["close_home"]
     assert not router.PENDING_PATH.exists()
     assert read_events(isolated_router)[1]["clarification_count"] == 1
 
 
 def test_off_record_suppresses_events_until_logging_resumes(isolated_router, monkeypatch):
-    monkeypatch.setattr(router, "execute", lambda _command, _dry_run: True)
+    monkeypatch.setattr(
+        router,
+        "execute",
+        lambda command, _dry_run: ActionResult("success", "test", command.get("capability", "test")),
+    )
 
     assert router.route("off record")["status"] == "off_record"
     assert router.OFF_RECORD_PATH.exists()
-    assert router.route("open terminal")["status"] == "success"
+    assert router.route("open cliamp")["status"] == "success"
     assert read_events(isolated_router) == []
 
     assert router.route("logging on")["status"] == "logging_on"
     assert not router.OFF_RECORD_PATH.exists()
-    assert router.route("open terminal")["status"] == "success"
+    assert router.route("open cliamp")["status"] == "success"
     assert len(read_events(isolated_router)) == 1
 
 
@@ -171,12 +317,12 @@ def test_silent_input_is_recorded(isolated_router):
 @pytest.mark.parametrize(
     ("production_id", "shadow_status", "shadow_id", "expected"),
     [
-        ("open_browser", "matched", "open_browser", "agree"),
+        ("volume_up", "matched", "volume_up", "agree"),
         (None, "no_match", None, "agree"),
-        (None, "matched", "open_browser", "shadow_extension"),
-        ("open_browser", "no_match", None, "shadow_regression"),
-        ("open_browser", "matched", "open_terminal", "conflict"),
-        ("open_browser", "not_installed", None, "not_comparable"),
+        (None, "matched", "volume_up", "shadow_extension"),
+        ("volume_up", "no_match", None, "shadow_regression"),
+        ("volume_up", "matched", "volume_down", "conflict"),
+        ("volume_up", "not_installed", None, "not_comparable"),
     ],
 )
 def test_shadow_comparison_labels(production_id, shadow_status, shadow_id, expected):
@@ -191,7 +337,7 @@ def test_shadow_comparison_labels(production_id, shadow_status, shadow_id, expec
 def test_clarification_answer_is_not_compared_without_shadow_context():
     event = {
         "event_type": "command",
-        "matched_command_id": "close_terminal",
+        "matched_command_id": "close_home",
         "clarification_count": 1,
         "shadow": {"status": "no_match"},
     }
@@ -200,12 +346,14 @@ def test_clarification_answer_is_not_compared_without_shadow_context():
 
 def test_independent_hassil_grammar_covers_exact_registry():
     by_phrase, by_id = router.load_commands()
-    first = router.hassil_shadow("open browser", by_id)
+    first = router.hassil_shadow("volume up", by_id)
     if first["status"] == "not_installed":
         pytest.skip("optional HassIL dependency is not installed")
 
     failures = []
     for phrase, command in by_phrase.items():
+        if command.get("desktop_id"):
+            continue
         shadow = router.hassil_shadow(phrase, by_id)
         if shadow.get("status") != "matched" or shadow.get("command_id") != command["id"]:
             failures.append((phrase, command["id"], shadow))
@@ -214,12 +362,91 @@ def test_independent_hassil_grammar_covers_exact_registry():
 
 def test_independent_hassil_grammar_finds_natural_extensions():
     _, by_id = router.load_commands()
-    shadow = router.hassil_shadow("open the browser", by_id)
+    shadow = router.hassil_shadow("raise the volume", by_id)
     if shadow["status"] == "not_installed":
         pytest.skip("optional HassIL dependency is not installed")
     assert shadow["status"] == "matched"
-    assert shadow["command_id"] == "open_browser"
+    assert shadow["command_id"] == "volume_up"
+
+
+def test_dynamic_apps_are_skipped_by_static_shadow_grammar():
+    _, by_id = router.load_commands()
+    assert router.hassil_shadow("open cliamp", by_id)["reason"] == "dynamic_app_registry"
 
 
 def test_unknown_action_never_executes():
-    assert router.execute({"action": "not_allowed", "argv": ["true"]}, dry_run=False) is False
+    assert router.execute({"action": "not_allowed", "argv": ["true"]}, dry_run=False).status == "unsupported"
+
+
+def test_omarchy_adapter_closes_matching_window_address(monkeypatch, tmp_path):
+    calls = []
+
+    def fake_run(argv, **_kwargs):
+        calls.append(argv)
+        if argv == ["hyprctl", "-j", "clients"]:
+            return type("Result", (), {
+                "returncode": 0,
+                "stdout": json.dumps([
+                    {"address": "0x1", "class": "foot", "initialClass": "foot", "title": "shell", "focusHistoryID": 0},
+                    {"address": "0x2", "class": "foot", "initialClass": "foot", "title": "cliamp", "focusHistoryID": 1},
+                ]),
+            })()
+        return type("Result", (), {"returncode": 0})()
+
+    monkeypatch.setattr("archi.adapters.omarchy.subprocess.run", fake_run)
+    command = router.dynamic_app_commands()[1]
+    assert command["id"] == "close_app:cliamp.desktop"
+    adapter = OmarchyDesktopAdapter(tmp_path)
+    result = adapter.execute(command["capability"], command["payload"])
+    assert result.status == "success"
+    assert calls[-1] == [
+        "hyprctl",
+        "dispatch",
+        'hl.dsp.window.close({ window = "address:0x2" })',
+    ]
+
+
+def test_omarchy_feedback_uses_transient_osd_not_system_notifications(monkeypatch, tmp_path):
+    calls = []
+    monkeypatch.delenv("ARCHI_FEEDBACK", raising=False)
+    monkeypatch.setattr(
+        "archi.adapters.omarchy.subprocess.Popen",
+        lambda argv, **kwargs: calls.append((argv, kwargs)),
+    )
+
+    OmarchyDesktopAdapter(tmp_path).feedback("heard", "Heard: open cliamp", 1000)
+
+    assert calls == [(
+        [
+            "omarchy-osd",
+            "--icon", "microphone",
+            "--message", "Heard: open cliamp",
+            "--duration", "1000",
+        ],
+        {"start_new_session": True, "stdout": -3, "stderr": -3},
+    )]
+
+
+def test_dry_run_reports_selected_adapter_without_execution(monkeypatch):
+    class StubAdapter:
+        provider_id = "test.desktop"
+
+        def capabilities(self):
+            return frozenset({"app.open"})
+
+    monkeypatch.setattr(router, "select_desktop_adapter", lambda _path: StubAdapter())
+    result = router.execute(
+        {"action": "capability", "capability": "app.open", "payload": {}},
+        dry_run=True,
+    )
+    assert result == ActionResult("success", "test.desktop", "app.open")
+
+
+def test_unknown_desktop_adapter_is_unavailable(monkeypatch):
+    monkeypatch.setenv("ARCHI_DESKTOP_ADAPTER", "not-a-real-adapter")
+    result = router.execute(
+        {"action": "capability", "capability": "app.open", "payload": {}},
+        dry_run=True,
+    )
+    assert result.status == "unavailable"
+    assert result.provider_id == "none"

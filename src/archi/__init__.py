@@ -1,1 +1,1 @@
-"""ArCHi: a deterministic, push-to-talk desktop command layer."""
+"""ArCHi: a local, deterministic accessibility control plane for Linux."""

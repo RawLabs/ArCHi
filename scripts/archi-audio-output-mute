@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+action="${1:-}"
+case "$action" in
+  mute|unmute|toggle) ;;
+  *)
+    printf 'Usage: %s <mute|unmute|toggle>\n' "$0" >&2
+    exit 2
+    ;;
+esac
+
+sink="$(omarchy-audio-output-sink)"
+if [[ -z "$sink" ]]; then
+  printf 'Could not resolve an audio sink to control.\n' >&2
+  exit 1
+fi
+
+volume_percent() {
+  pactl get-sink-volume "$sink" 2>/dev/null |
+    awk 'NR == 1 {
+      for (i = 1; i <= NF; i++)
+        if ($i ~ /%$/) {sub("%", "", $i); print $i; exit}
+    }'
+}
+
+case "$action" in
+  mute) pactl set-sink-mute "$sink" 1 ;;
+  unmute) pactl set-sink-mute "$sink" 0 ;;
+  toggle) pactl set-sink-mute "$sink" toggle ;;
+esac
+
+percent="$(volume_percent)"
+if [[ "$action" == "mute" || "${percent:-0}" == "0" ]]; then
+  icon="volume-muted"
+else
+  icon="volume-high"
+fi
+
+omarchy-osd -i "$icon" -p "${percent:-0}"

@@ -10,10 +10,11 @@ import tomllib
 
 BINDINGS = [
     ("Super + R", "start ArCHi command capture"),
-    ("Enter", "submit while ArCHi capture is active"),
+    ("Super + R", "stop and submit active ArCHi capture"),
+    ("say 'ArCHi stop'", "stop and submit active ArCHi capture"),
     ("Escape", "cancel while ArCHi capture is active"),
     ("Super + Shift + R", "start dictation/documentation mode"),
-    ("Enter", "stop and submit while dictation is active"),
+    ("Super + Shift + R", "stop and submit while dictation is active"),
     ("Escape", "cancel while dictation is active"),
     ("Super + Shift + V", "read the clipboard aloud"),
     ("Super + Ctrl + Up", "raise ArCHi voice volume"),

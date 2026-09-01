@@ -2,14 +2,26 @@
 set -euo pipefail
 
 runtime_dir="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/archi"
+archi_bin_dir="${ARCHI_BIN_DIR:-$HOME/.local/bin}"
+archi_home="${ARCHI_HOME:-$HOME/.local/share/archi}"
 transcript="$runtime_dir/control-transcript.txt"
 start_time="$runtime_dir/control-start-ns"
 session_id="$(python3 -c 'import uuid; print(uuid.uuid4().hex)')"
 mkdir -p "$runtime_dir"
 chmod 700 "$runtime_dir"
-rm -f "$transcript"
+rm -f "$transcript" "$transcript.done" "$runtime_dir/verbal-stop-monitor.pid"
 printf '%s' "$session_id" > "$runtime_dir/control-session-id"
 chmod 600 "$runtime_dir/control-session-id"
 date +%s%N > "$start_time"
 chmod 600 "$start_time"
-voxtype record start --file="$transcript"
+if ! voxtype record start --file="$transcript"; then
+  rm -f "$transcript" "$transcript.done" "$runtime_dir/control-session-id" "$start_time"
+  exit 1
+fi
+
+python3 "$archi_home/feedback.py" listening "Listening" 900 >/dev/null 2>&1 &
+
+"$archi_bin_dir/archi-verbal-stop-monitor" "$session_id" >/dev/null 2>&1 &
+monitor_pid=$!
+printf '%s' "$monitor_pid" > "$runtime_dir/verbal-stop-monitor.pid"
+chmod 600 "$runtime_dir/verbal-stop-monitor.pid"

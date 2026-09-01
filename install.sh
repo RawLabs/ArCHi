@@ -25,7 +25,9 @@ for script in "$project_dir"/scripts/*; do
   [[ -f "$script" ]] || continue
   install -m 755 "$script" "$bin_dir"/
 done
-install -m 644 "$project_dir/src/archi/router.py" "$data_dir/router.py"
+install -m 644 "$project_dir"/src/archi/*.py "$data_dir"/
+install -d -m 755 "$data_dir/adapters"
+install -m 644 "$project_dir"/src/archi/adapters/*.py "$data_dir/adapters"/
 install -m 644 "$project_dir/config/commands.toml" "$data_dir/commands.default.toml"
 install -m 644 "$project_dir/config/intents.yaml" "$data_dir/intents.yaml"
 

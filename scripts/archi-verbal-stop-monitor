@@ -1,0 +1,204 @@
+#!/usr/bin/env python3
+"""Stop an active ArCHi capture when local speech contains "ArCHi stop"."""
+
+from __future__ import annotations
+
+import argparse
+from collections import deque
+import os
+from pathlib import Path
+import re
+import signal
+import subprocess
+import threading
+import time
+import wave
+
+
+SAMPLE_RATE = 16_000
+CHANNELS = 1
+SAMPLE_WIDTH = 2
+STOP_PATTERN = re.compile(r"\b(?:archi|archie)\s+stop\b")
+
+
+def bounded_float(name: str, default: float, minimum: float, maximum: float) -> float:
+    try:
+        value = float(os.environ.get(name, str(default)))
+    except ValueError:
+        return default
+    return value if minimum <= value <= maximum else default
+
+
+def contains_stop_phrase(text: str) -> bool:
+    normalized = text.casefold()
+    normalized = re.sub(r"[^\w\s']", " ", normalized, flags=re.UNICODE)
+    normalized = re.sub(r"\s+", " ", normalized).strip()
+    return STOP_PATTERN.search(normalized) is not None
+
+
+def read_session(path: Path) -> str | None:
+    try:
+        return path.read_text(encoding="utf-8").strip() or None
+    except OSError:
+        return None
+
+
+def write_wav(path: Path, audio: bytes) -> None:
+    with wave.open(str(path), "wb") as stream:
+        stream.setnchannels(CHANNELS)
+        stream.setsampwidth(SAMPLE_WIDTH)
+        stream.setframerate(SAMPLE_RATE)
+        stream.writeframes(audio)
+    os.chmod(path, 0o600)
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="Monitor one active ArCHi capture for its verbal stop phrase.")
+    parser.add_argument("session_id")
+    args = parser.parse_args()
+
+    runtime_dir = Path(os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")) / "archi"
+    session_path = runtime_dir / "control-session-id"
+    pid_path = runtime_dir / "verbal-stop-monitor.pid"
+    audio_path = runtime_dir / f"verbal-stop-{args.session_id}.wav"
+    archi_bin = Path(os.environ.get("ARCHI_BIN_DIR", Path.home() / ".local" / "bin"))
+    stop_command = Path(os.environ.get("ARCHI_CONTROL_STOP", archi_bin / "archi-control-stop"))
+
+    max_duration = bounded_float("ARCHI_MAX_RECORDING_SECONDS", 120.0, 0.05, 120.0)
+    probe_interval = bounded_float("ARCHI_VERBAL_STOP_PROBE_SECONDS", 2.0, 0.01, 10.0)
+    window_seconds = bounded_float("ARCHI_VERBAL_STOP_WINDOW_SECONDS", 4.0, probe_interval, 12.0)
+    max_audio_bytes = int(SAMPLE_RATE * CHANNELS * SAMPLE_WIDTH * window_seconds)
+
+    if read_session(session_path) != args.session_id:
+        return 0
+
+    runtime_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
+    pid_path.write_text(str(os.getpid()), encoding="ascii")
+    os.chmod(pid_path, 0o600)
+
+    stopping = threading.Event()
+    audio_lock = threading.Lock()
+    audio_chunks: deque[bytes] = deque()
+    buffered_bytes = 0
+    total_bytes = 0
+
+    def handle_signal(_signum: int, _frame: object) -> None:
+        stopping.set()
+
+    signal.signal(signal.SIGTERM, handle_signal)
+    signal.signal(signal.SIGINT, handle_signal)
+
+    recorder: subprocess.Popen[bytes] | None = None
+    reader: threading.Thread | None = None
+    trigger: str | None = None
+
+    try:
+        recorder = subprocess.Popen(
+            [
+                "pw-record",
+                "--rate", str(SAMPLE_RATE),
+                "--channels", str(CHANNELS),
+                "--format", "s16",
+                "--raw", "-",
+            ],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+        )
+
+        def read_audio() -> None:
+            nonlocal buffered_bytes, total_bytes
+            assert recorder is not None and recorder.stdout is not None
+            while not stopping.is_set():
+                chunk = recorder.stdout.read(4096)
+                if not chunk:
+                    break
+                with audio_lock:
+                    audio_chunks.append(chunk)
+                    buffered_bytes += len(chunk)
+                    total_bytes += len(chunk)
+                    while audio_chunks and buffered_bytes - len(audio_chunks[0]) >= max_audio_bytes:
+                        buffered_bytes -= len(audio_chunks.popleft())
+
+        reader = threading.Thread(target=read_audio, name="archi-verbal-stop-audio", daemon=True)
+        reader.start()
+
+        deadline = time.monotonic() + max_duration
+        next_probe = time.monotonic() + probe_interval
+        last_probed_bytes = 0
+
+        while not stopping.is_set():
+            if read_session(session_path) != args.session_id:
+                break
+
+            now = time.monotonic()
+            if now >= deadline:
+                trigger = "timeout"
+                break
+            if now < next_probe:
+                stopping.wait(min(0.1, next_probe - now, deadline - now))
+                continue
+
+            next_probe = now + probe_interval
+            with audio_lock:
+                current_total = total_bytes
+                snapshot = b"".join(audio_chunks)[-max_audio_bytes:]
+            if current_total == last_probed_bytes or len(snapshot) < SAMPLE_RATE * SAMPLE_WIDTH // 2:
+                continue
+            last_probed_bytes = current_total
+
+            try:
+                write_wav(audio_path, snapshot)
+                result = subprocess.run(
+                    ["voxtype", "transcribe", str(audio_path)],
+                    capture_output=True,
+                    text=True,
+                    timeout=min(15.0, max(1.0, deadline - time.monotonic())),
+                    check=False,
+                )
+            except (OSError, subprocess.TimeoutExpired, wave.Error):
+                continue
+            if result.returncode == 0 and contains_stop_phrase(result.stdout):
+                trigger = "verbal"
+                break
+    except OSError:
+        # The physical toggle and the 120-second deadline remain useful even
+        # if live keyword capture is unavailable.
+        deadline = time.monotonic() + max_duration
+        while not stopping.wait(min(0.25, max(0.0, deadline - time.monotonic()))):
+            if read_session(session_path) != args.session_id:
+                break
+            if time.monotonic() >= deadline:
+                trigger = "timeout"
+                break
+    finally:
+        stopping.set()
+        if recorder is not None and recorder.poll() is None:
+            recorder.terminate()
+            try:
+                recorder.wait(timeout=1)
+            except subprocess.TimeoutExpired:
+                recorder.kill()
+                recorder.wait(timeout=1)
+        if reader is not None:
+            reader.join(timeout=1)
+        audio_path.unlink(missing_ok=True)
+        if read_session(session_path) != args.session_id:
+            trigger = None
+        try:
+            if pid_path.read_text(encoding="ascii").strip() == str(os.getpid()):
+                pid_path.unlink(missing_ok=True)
+        except OSError:
+            pass
+
+    if trigger:
+        subprocess.Popen(
+            [str(stop_command), f"--{trigger}", "--session-id", args.session_id],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            start_new_session=True,
+        )
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

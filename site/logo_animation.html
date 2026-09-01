@@ -1,0 +1,2791 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ArCHi — Artificial Restorative Computer Harness Intelligence</title>
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,700;0,800;1,400&family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=Caveat:wght@600;700&display=swap');
+
+    :root {
+      --chalk-white: #f8fafc;
+      --chalk-orange: #ff781f;
+      --chalk-orange-light: #ffa15e;
+      --chalk-orange-glow: rgba(255, 120, 31, 0.55);
+      --board-slate-900: #0a0d12;
+      --board-slate-800: #121720;
+      --board-slate-700: #1b222e;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #07090c;
+      color: #e2e8f0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      user-select: none;
+      -webkit-user-select: none;
+      overflow-x: hidden;
+    }
+
+    .font-mono-code {
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .font-sketch {
+      font-family: 'Caveat', cursive;
+    }
+
+    /* Main presentation container blur for splash */
+    #main-studio-container {
+      transition: filter 0.9s cubic-bezier(0.16, 1, 0.3, 1), transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    #main-studio-container.blurred-view {
+      filter: blur(20px);
+      transform: scale(0.985);
+      pointer-events: none;
+    }
+
+    /* Blackboard Canvas Frame */
+    .blackboard-frame {
+      background: radial-gradient(circle at 50% 35%, #18202c 0%, #0f141d 60%, #090c10 100%);
+      box-shadow: 
+        inset 0 0 140px rgba(0, 0, 0, 0.92), 
+        inset 0 0 40px rgba(0, 0, 0, 0.95),
+        0 25px 60px -15px rgba(0, 0, 0, 0.8),
+        0 0 0 1px rgba(255, 255, 255, 0.08);
+      position: relative;
+    }
+
+    /* Crisp Micro-grain Chalk Slate Texture */
+    .blackboard-frame::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image: 
+        radial-gradient(1px 1px at 15px 25px, rgba(255,255,255,0.06), transparent),
+        radial-gradient(1.5px 1.5px at 120px 70px, rgba(255,255,255,0.05), transparent),
+        radial-gradient(1px 1px at 240px 160px, rgba(255,255,255,0.04), transparent),
+        radial-gradient(2px 2px at 380px 110px, rgba(255,255,255,0.035), transparent),
+        radial-gradient(1px 1px at 510px 220px, rgba(255,255,255,0.06), transparent);
+      background-size: 260px 260px;
+      opacity: 0.85;
+      pointer-events: none;
+    }
+
+    /* Smudge layer */
+    .board-smudge-layer {
+      position: absolute;
+      inset: 0;
+      background: 
+        radial-gradient(ellipse 600px 300px at 50% 45%, rgba(255, 255, 255, 0.02) 0%, transparent 70%),
+        radial-gradient(ellipse 350px 200px at 75% 35%, rgba(255, 120, 31, 0.015) 0%, transparent 60%),
+        radial-gradient(ellipse 400px 250px at 25% 65%, rgba(255, 255, 255, 0.015) 0%, transparent 65%);
+      pointer-events: none;
+    }
+
+    /* Letter Glyphs */
+    .char-glyph {
+      display: inline-block;
+      transition: transform 0.85s cubic-bezier(0.34, 1.45, 0.64, 1),
+                  opacity 0.65s ease,
+                  text-shadow 0.65s ease,
+                  filter 0.65s ease;
+      will-change: transform, opacity, text-shadow, filter;
+    }
+
+    .char-white { color: #ffffff; }
+    .char-orange { color: #ff781f; }
+
+    /* Tagline items */
+    .tag-item {
+      transition: all 0.65s cubic-bezier(0.16, 1, 0.3, 1);
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+
+    /* Status Node Glow Pulse */
+    @keyframes nodePulse {
+      0%, 100% {
+        box-shadow: 0 0 8px #ff781f, 0 0 18px rgba(255, 120, 31, 0.85), 0 0 35px rgba(255, 120, 31, 0.4);
+        transform: scale(1);
+      }
+      50% {
+        box-shadow: 0 0 16px #ffa15e, 0 0 30px rgba(255, 120, 31, 1), 0 0 55px rgba(255, 120, 31, 0.65);
+        transform: scale(1.2);
+      }
+    }
+
+    .status-node-dot {
+      animation: nodePulse 2s ease-in-out infinite;
+    }
+
+    /* Wood Chalk Rail */
+    .chalk-rail {
+      background: linear-gradient(to bottom, #2b1f17 0%, #1c140e 50%, #100b07 100%);
+      box-shadow: 
+        0 -3px 8px rgba(0, 0, 0, 0.8),
+        inset 0 1px 1px rgba(255, 255, 255, 0.15),
+        inset 0 -2px 4px rgba(0, 0, 0, 0.9);
+      border-top: 1px solid #453326;
+      position: relative;
+    }
+
+    .chalk-stick {
+      height: 9px;
+      border-radius: 2px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.7), inset 0 1px 1px rgba(255, 255, 255, 0.4);
+      position: relative;
+    }
+
+    /* Manifesto Glass Panel */
+    .studio-panel {
+      background: rgba(18, 23, 32, 0.88);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+    }
+
+    .step-tab {
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .step-tab.active {
+      background: rgba(255, 120, 31, 0.16);
+      border-color: rgba(255, 120, 31, 0.75);
+      box-shadow: 0 0 25px rgba(255, 120, 31, 0.2);
+    }
+
+    /* Range Sliders */
+    input[type=range] {
+      -webkit-appearance: none;
+      background: #1e2634;
+      height: 6px;
+      border-radius: 3px;
+      outline: none;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      height: 16px;
+      width: 16px;
+      border-radius: 50%;
+      background: #ff781f;
+      cursor: pointer;
+      box-shadow: 0 0 12px rgba(255, 120, 31, 0.9);
+      border: 2px solid #ffffff;
+      transition: transform 0.15s ease;
+    }
+    input[type=range]::-webkit-slider-thumb:hover {
+      transform: scale(1.25);
+    }
+
+    .chalk-line-beam {
+      stroke-dasharray: 600;
+      stroke-dashoffset: 0;
+      transition: stroke-dashoffset 0.8s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.6s ease;
+    }
+
+    /* Spoken Narration Waveform Animation */
+    @keyframes soundBar {
+      0%, 100% { height: 4px; }
+      50% { height: 16px; }
+    }
+    .wave-bar {
+      display: inline-block;
+      width: 3px;
+      border-radius: 1.5px;
+      background-color: #ff781f;
+      animation: soundBar 1.2s ease-in-out infinite;
+    }
+    .wave-bar:nth-child(2) { animation-delay: 0.2s; height: 8px; }
+    .wave-bar:nth-child(3) { animation-delay: 0.4s; height: 14px; }
+    .wave-bar:nth-child(4) { animation-delay: 0.1s; height: 10px; }
+
+    /* Chalk Typewriter Cursor */
+    @keyframes chalkBlink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
+    }
+    .chalk-cursor {
+      display: inline-block;
+      color: #ff781f;
+      font-weight: bold;
+      animation: chalkBlink 0.75s ease-in-out infinite;
+      margin-left: 2px;
+      text-shadow: 0 0 8px rgba(255, 120, 31, 0.8);
+    }
+
+    /* Modal Splash Overlay */
+    #launch-overlay {
+      transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    #launch-overlay.fade-out {
+      opacity: 0;
+      pointer-events: none;
+      transform: scale(1.05);
+    }
+
+    /* Fluid Light Wave CTA Button */
+    @keyframes waveShimmer {
+      0% {
+        background-position: -200% 0;
+      }
+      100% {
+        background-position: 200% 0;
+      }
+    }
+
+    @keyframes ambientWaveGlow {
+      0%, 100% {
+        box-shadow: 0 8px 25px rgba(255, 120, 31, 0.45), 0 0 45px rgba(255, 120, 31, 0.25);
+      }
+      50% {
+        box-shadow: 0 12px 38px rgba(255, 120, 31, 0.85), 0 0 65px rgba(255, 120, 31, 0.5);
+      }
+    }
+
+    .wave-btn {
+      background: linear-gradient(
+        110deg,
+        #ff781f 0%,
+        #ff8d3b 25%,
+        #ffffff 50%,
+        #ff8d3b 75%,
+        #ff781f 100%
+      );
+      background-size: 250% 100%;
+      animation: waveShimmer 2.8s cubic-bezier(0.4, 0, 0.2, 1) infinite, ambientWaveGlow 2.4s ease-in-out infinite;
+      transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease;
+    }
+    .wave-btn:hover {
+      transform: translateY(-2px) scale(1.04);
+      box-shadow: 0 16px 45px rgba(255, 120, 31, 0.95), 0 0 75px rgba(255, 120, 31, 0.65);
+    }
+
+    /* Open Mind Brain-Bulb Chalk Animations */
+    @keyframes rayPulse {
+      0%, 100% {
+        opacity: 0.6;
+        transform: scale(0.97);
+        transform-origin: 160px 160px;
+      }
+      50% {
+        opacity: 1;
+        transform: scale(1.05);
+        transform-origin: 160px 160px;
+      }
+    }
+    .open-mind-rays {
+      animation: rayPulse 2.4s ease-in-out infinite;
+    }
+    @keyframes brainGlow {
+      0%, 100% {
+        filter: drop-shadow(0 0 16px rgba(255, 120, 31, 0.55)) drop-shadow(0 0 35px rgba(255, 120, 31, 0.25));
+      }
+      50% {
+        filter: drop-shadow(0 0 28px rgba(255, 161, 94, 0.85)) drop-shadow(0 0 50px rgba(255, 120, 31, 0.45));
+      }
+    }
+    .open-mind-bulb-glow {
+      animation: brainGlow 3s ease-in-out infinite;
+    }
+
+    /* =========================================================================
+       PHASE 02 EXPERIENCE FRAMEWORK STYLES
+       ========================================================================= */
+    .phase-tab {
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .phase-tab.active {
+      background: #ff781f;
+      color: #000000;
+      box-shadow: 0 0 20px rgba(255, 120, 31, 0.4);
+    }
+
+    /* Micro Floating Nodes */
+    @keyframes floatOrb1 {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-2.5px); }
+    }
+    @keyframes floatOrb2 {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(2.5px); }
+    }
+    @keyframes floatOrb3 {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-1.5px); }
+    }
+
+    .chalk-const-node-1 { animation: floatOrb1 5s ease-in-out infinite; }
+    .chalk-const-node-2 { animation: floatOrb2 6s ease-in-out infinite; }
+    .chalk-const-node-3 { animation: floatOrb3 5.5s ease-in-out infinite; }
+
+    .chalk-node-pill {
+      background: rgba(14, 18, 26, 0.85);
+      border: 1.5px dashed rgba(255, 255, 255, 0.28);
+      box-shadow: inset 0 0 12px rgba(255, 255, 255, 0.03), 0 8px 24px rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(8px);
+      transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .chalk-node-pill:hover {
+      border-color: #ff781f;
+      color: #ffffff;
+      transform: scale(1.06) translateY(-2px);
+      box-shadow: 0 0 22px rgba(255, 120, 31, 0.35);
+    }
+
+    .friction-bubble {
+      background: rgba(255, 120, 31, 0.12);
+      border: 1px dashed rgba(255, 120, 31, 0.6);
+      color: #ffa15e;
+      font-family: 'JetBrains Mono', monospace;
+      animation: floatOrb2 3.8s ease-in-out infinite;
+    }
+
+      /* Radial Controller */
+    .radial-sector {
+      transition: fill 0.2s ease, filter 0.2s ease, transform 0.2s ease;
+      cursor: pointer;
+    }
+    .radial-sector:hover {
+      fill: rgba(255, 120, 31, 0.35);
+      filter: drop-shadow(0 0 8px rgba(255, 120, 31, 0.8));
+    }
+
+    @keyframes joystickDrift {
+      0%, 100% { transform: translate(0, 0); }
+      25% { transform: translate(12px, -8px); }
+      50% { transform: translate(-10px, 10px); }
+      75% { transform: translate(8px, 12px); }
+    }
+    .joystick-thumb {
+      animation: joystickDrift 4s ease-in-out infinite;
+    }
+  </style>
+</head>
+<body class="p-3 sm:p-6 md:p-8 flex flex-col items-center justify-center relative">
+
+  <!-- Audio elements for narration playback -->
+  <audio id="audio-intro" src="../media/chatterbox-speech-intro-short.wav" preload="auto"></audio>
+  <audio id="audio-step-1" src="../media/chatterbox-speech-stp1.wav" preload="auto"></audio>
+  <audio id="audio-step-2" src="../media/chatterbox-speech_stp2.wav" preload="auto"></audio>
+  <audio id="audio-step-3" src="../media/chatterbox-speech-stp3.wav" preload="auto"></audio>
+  <audio id="audio-step-3-5" src="../media/chatterbox-speech-segue-stp3point5.wav" preload="auto"></audio>
+
+  <!-- Part II Experience Audio Elements (Updated with 3a/3b and 4a/4b splits) -->
+  <audio id="audio-p2-1" src="../media/chatterbox-speech-beat1.wav" preload="auto"></audio>
+  <audio id="audio-p2-2" src="../media/chatterbox-speech-beat2.wav" preload="auto"></audio>
+  <audio id="audio-p2-3a" src="../media/chatterbox-speech-beat3a.wav" preload="auto"></audio>
+  <audio id="audio-p2-3b" src="../media/chatterbox-speech-beat3b.wav" preload="auto"></audio>
+  <audio id="audio-p2-4a" src="../media/chatterbox-speech-beat4a.wav" preload="auto"></audio>
+  <audio id="audio-p2-4b" src="../media/chatterbox-speech-beat4b.wav" preload="auto"></audio>
+  <audio id="audio-p2-5" src="../media/chatterbox-speech-beat5.wav" preload="auto"></audio>
+  <audio id="audio-p2-6" src="../media/chatterbox-speech-beat6.wav" preload="auto"></audio>
+  <audio id="audio-p2-7" src="../media/chatterbox-speech-beat7.wav" preload="auto"></audio>
+  <audio id="audio-p2-8" src="../media/chatterbox-speech-beat8.wav" preload="auto"></audio>
+  <audio id="audio-p2-9" src="../media/chatterbox-speech-beat9.wav" preload="auto"></audio>
+
+  <!-- =========================================================================
+       MINIMALIST MANIFESTO SPLASH OVERLAY
+       ========================================================================= -->
+  <div id="launch-overlay" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#07090c]/92 backdrop-blur-2xl">
+    <div class="max-w-md w-full bg-[#111620]/95 border border-[#2a3446] rounded-3xl p-8 sm:p-10 shadow-[0_25px_80px_rgba(0,0,0,0.95)] flex flex-col items-center text-center gap-6 relative overflow-hidden">
+      
+      <!-- Ambient Backlight Glow -->
+      <div class="absolute -top-24 -left-24 w-56 h-56 bg-[#ff781f]/15 rounded-full blur-3xl pointer-events-none"></div>
+      <div class="absolute -bottom-24 -right-24 w-56 h-56 bg-white/10 rounded-full blur-3xl pointer-events-none"></div>
+
+      <!-- Small Logo Badge -->
+      <div class="relative cursor-pointer" onclick="handleSplashAction()">
+        <img src="../media/archi_mini_logo_regen.png" alt="ArCHi Logo" class="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl shadow-[0_0_35px_rgba(255,120,31,0.35)] border border-white/20 object-contain bg-black/40 p-1" />
+        <span class="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-[#ff781f] status-node-dot"></span>
+      </div>
+
+      <!-- Headline (Sans-serif) -->
+      <h2 class="text-xl sm:text-2xl font-bold text-white tracking-tight leading-snug max-w-xs font-sans">
+        A new understanding of Computer Accessibility
+      </h2>
+
+      <!-- Spoken Intro Audio Status -->
+      <div id="splash-audio-status" class="flex items-center justify-center gap-2 text-xs text-[#ff781f] min-h-[22px]">
+        <div id="splash-wave-bars" class="hidden items-center gap-1">
+          <span class="wave-bar"></span>
+          <span class="wave-bar"></span>
+          <span class="wave-bar"></span>
+          <span class="wave-bar"></span>
+        </div>
+        <span id="splash-audio-text" class="text-[#94a3b8] font-sans">Click Begin to start the presentation</span>
+      </div>
+
+      <!-- Interactive Volume Control on Splash Screen -->
+      <div class="flex items-center justify-center gap-3 bg-black/40 border border-white/10 px-4 py-2 rounded-2xl w-full max-w-[240px]">
+        <button id="splash-vol-icon" onclick="toggleMute()" class="text-sm text-[#cbd5e1] hover:text-white transition-colors cursor-pointer" title="Toggle Mute">🔉</button>
+        <input id="splash-vol-slider" type="range" min="0" max="1" step="0.05" value="0.5" class="w-full cursor-pointer accent-[#ff781f]" oninput="setMasterVolume(this.value)" title="Volume Slider" />
+      </div>
+
+      <!-- Fluid Wave Action Button -->
+      <button id="begin-btn" class="wave-btn w-full px-8 py-4 rounded-2xl text-black font-black text-base sm:text-lg flex items-center justify-center gap-3 cursor-pointer shadow-2xl font-sans" onclick="handleSplashAction()">
+        <span id="splash-btn-label">Begin Presentation</span>
+        <svg id="splash-btn-icon" class="w-5 h-5 fill-current" viewBox="0 0 24 24">
+          <path d="M8 5v14l11-7z"/>
+        </svg>
+      </button>
+
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       MAIN PRESENTATION STAGE (Manifesto Experience)
+       ========================================================================= -->
+  <div id="main-studio-container" class="w-full max-w-5xl studio-panel rounded-3xl p-5 sm:p-8 flex flex-col gap-6 blurred-view">
+    <!-- Top Header & Brand Lockup -->
+    <div class="flex flex-wrap items-center justify-between gap-4 border-b border-white/10 pb-5">
+      <div>
+        <div class="flex items-center gap-2.5">
+          <span class="w-3 h-3 rounded-full bg-[#ff781f] status-node-dot"></span>
+          <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-white font-sans">
+            ArCHi
+          </h1>
+        </div>
+        <p class="text-sm sm:text-base text-[#94a3b8] mt-1 font-sans">
+          <span class="text-white font-bold">Artificial</span><sup class="text-[#ff781f] font-mono-code font-bold ml-0.5">Restorative</sup>
+          <span class="text-white/40 mx-1.5">&middot;</span>
+          <span class="text-white font-bold">Computer Harness</span><sup class="text-[#ff781f] font-mono-code font-bold ml-0.5">Intelligence</sup>
+        </p>
+      </div>
+
+      <!-- Presentation Part Selector -->
+      <div class="flex items-center bg-black/60 border border-white/10 p-1 rounded-2xl shadow-inner">
+        <button id="phase-btn-1" class="phase-tab active px-4 py-1.5 rounded-xl text-xs font-bold font-sans transition-all bg-[#ff781f] text-black shadow-md cursor-pointer" onclick="switchPhase(1)">
+          Part I &middot; The Harness
+        </button>
+        <button id="phase-btn-2" class="phase-tab px-4 py-1.5 rounded-xl text-xs font-medium font-sans text-[#94a3b8] hover:text-white transition-all cursor-pointer" onclick="switchPhase(2)">
+          Part II &middot; The Story
+        </button>
+      </div>
+
+      <!-- Action Controls & Header Volume Slider -->
+      <div class="flex items-center flex-wrap gap-2.5">
+        
+        <!-- Live Header Volume Control -->
+        <div class="flex items-center gap-2.5 bg-black/40 border border-white/10 px-3.5 py-1.5 rounded-xl">
+          <button id="header-vol-icon" onclick="toggleMute()" class="text-xs text-[#cbd5e1] hover:text-white transition-colors cursor-pointer" title="Toggle Mute">🔉</button>
+          <input id="header-vol-slider" type="range" min="0" max="1" step="0.05" value="0.5" class="w-16 sm:w-20 cursor-pointer accent-[#ff781f]" oninput="setMasterVolume(this.value)" title="Master Volume" />
+        </div>
+
+        <!-- Narration Voice Audio Toggle -->
+        <button id="voice-btn" class="px-3.5 py-2 text-xs font-semibold rounded-xl bg-[#ff781f]/15 border border-[#ff781f]/50 text-[#ffa15e] hover:bg-[#ff781f]/25 transition-all flex items-center gap-2 shadow-sm font-sans cursor-pointer" onclick="toggleVoiceNarration()" title="Toggle Spoken Voice Narration">
+          <span id="voice-icon">🎙️</span>
+          <span id="voice-label">Voice Narration</span>
+        </button>
+
+        <!-- Chalk FX Audio Toggle -->
+        <button id="sound-btn" class="px-3.5 py-2 text-xs font-medium rounded-xl bg-white/5 border border-white/10 text-[#94a3b8] hover:text-white hover:border-white/20 transition-all flex items-center gap-2 font-sans cursor-pointer" onclick="toggleAudio()" title="Toggle Blackboard Sound FX">
+          <span id="sound-icon">🔇</span>
+          <span>Chalk FX</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Blackboard Stage Canvas -->
+    <!-- Blackboard Stage Canvas -->
+    <div id="blackboard-wrapper" class="relative blackboard-frame rounded-2xl overflow-hidden border border-[#2d3748] min-h-[500px] sm:min-h-[560px] flex flex-col justify-between p-5 sm:p-8 transition-all duration-500">
+      
+      <!-- Smudge & Vignette Overlays -->
+      <div class="board-smudge-layer"></div>
+      <canvas id="particle-canvas" class="absolute inset-0 w-full h-full pointer-events-none z-10"></canvas>
+
+      <!-- Corner Chalk Annotations -->
+      <div id="corner-notes-bar" class="flex justify-between items-center text-[11px] font-mono-code tracking-wider text-white/30 z-10 pointer-events-none select-none transition-opacity duration-500 mb-1">
+        <div id="corner-left-note">// 01. THE COMPUTER HARNESS</div>
+        <div id="corner-right-note" class="text-white/60 font-mono-code">[A &middot; C &middot; H &mdash; THE HARNESS]</div>
+      </div>
+
+      <!-- Main Visual Stage Arena (Flex Center Section) -->
+      <div id="blackboard-visual-arena" class="relative z-20 flex-1 flex flex-col items-center justify-center w-full min-h-[220px] max-h-[310px] my-auto py-1">
+        
+        <!-- Center Logo Animation Rig (Part I) -->
+        <div id="phase1-center-rig" class="relative w-full flex flex-col items-center justify-center py-2 transition-all duration-500">
+          
+          <!-- Formula Breakdown Pill -->
+          <div id="formula-pill" class="mb-4 sm:mb-6 text-xs sm:text-sm font-mono-code px-5 py-2 rounded-full bg-black/70 border border-white/10 text-[#cbd5e1] backdrop-blur-md transition-all duration-500 text-center shadow-xl">
+            <!-- Dynamically populated -->
+          </div>
+
+          <!-- Open Mind Brain-Bulb Chalk Illustration (Step 3.5 Segue) -->
+          <div id="open-mind-container" class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none opacity-0 scale-90 transition-all duration-700 z-30">
+            <div class="relative flex flex-col items-center justify-center cursor-pointer group pointer-events-auto" onclick="emitChalkDust(canvas.width / 2, canvas.height / 2 - 20, 35, '#ff781f'); playChalkSound('snap');" title="Open Minds — Click to spark ideas">
+              <svg viewBox="0 0 320 320" class="w-40 h-40 sm:w-48 sm:h-48 md:w-56 md:h-56 overflow-visible open-mind-bulb-glow">
+                <!-- Outer Radiating Thought Rays (Warm Chalk Orange) -->
+                <g stroke="#ff781f" stroke-width="3.5" stroke-linecap="round" class="open-mind-rays">
+                  <line x1="160" y1="36" x2="160" y2="16" />
+                  <line x1="108" y1="50" x2="94" y2="32" />
+                  <line x1="212" y1="50" x2="226" y2="32" />
+                  <line x1="64" y1="88" x2="48" y2="74" />
+                  <line x1="256" y1="88" x2="272" y2="74" />
+                  <line x1="40" y1="140" x2="20" y2="136" />
+                  <line x1="280" y1="140" x2="300" y2="136" />
+                  <line x1="42" y1="196" x2="22" y2="200" />
+                  <line x1="278" y1="196" x2="298" y2="200" />
+                  <line x1="72" y1="246" x2="54" y2="258" />
+                  <line x1="248" y1="246" x2="266" y2="258" />
+                </g>
+
+                <!-- Ambient Glow -->
+                <ellipse cx="160" cy="150" rx="85" ry="90" fill="rgba(255, 120, 31, 0.14)" />
+
+                <!-- Left Hemisphere Silhouette (Chalk Outline) -->
+                <path d="M 152 72 C 132 70, 96 82, 86 108 C 74 124, 70 148, 80 168 C 70 184, 74 208, 90 224 C 104 238, 128 248, 152 248 Z" fill="rgba(255, 161, 94, 0.12)" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
+
+                <!-- Right Hemisphere Silhouette (Chalk Outline) -->
+                <path d="M 168 72 C 188 70, 224 82, 234 108 C 246 124, 250 148, 240 168 C 250 184, 246 208, 230 224 C 216 238, 192 248, 168 248 Z" fill="rgba(255, 120, 31, 0.15)" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
+
+                <!-- Central Fissure Division -->
+                <line x1="160" y1="66" x2="160" y2="252" stroke="#ffa15e" stroke-width="3" stroke-linecap="round" stroke-dasharray="4 4" />
+
+                <!-- Left Cerebral Gyri / Thought Folds -->
+                <g stroke="#ffa15e" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.95">
+                  <path d="M 148 98 C 118 94, 102 114, 120 130 C 130 140, 148 134, 148 144" />
+                  <path d="M 88 150 C 104 150, 116 162, 108 176 C 100 190, 136 192, 148 202" />
+                  <path d="M 104 214 C 118 218, 128 230, 148 232" />
+                  <path d="M 130 164 C 144 168, 148 180, 148 186" />
+                </g>
+
+                <!-- Right Cerebral Gyri / Thought Folds -->
+                <g stroke="#ff781f" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.95">
+                  <path d="M 172 98 C 202 94, 218 114, 200 130 C 190 140, 172 134, 172 144" />
+                  <path d="M 232 150 C 216 150, 204 162, 212 176 C 220 190, 184 192, 172 202" />
+                  <path d="M 216 214 C 202 218, 192 230, 172 232" />
+                  <path d="M 190 164 C 176 168, 172 180, 172 186" />
+                </g>
+
+                <!-- Lightbulb Screw Base Lines (Chalk White & Orange) -->
+                <g stroke="#ffffff" stroke-width="3.5" stroke-linecap="round" opacity="0.95">
+                  <line x1="134" y1="264" x2="186" y2="264" />
+                  <line x1="140" y1="276" x2="180" y2="276" />
+                  <line x1="148" y1="288" x2="172" y2="288" stroke="#ff781f" />
+                </g>
+              </svg>
+              
+              <div class="mt-2 text-center">
+                <span class="text-xs font-mono-code tracking-widest text-[#ffa15e] uppercase bg-black/60 px-3.5 py-1 rounded-full border border-[#ff781f]/40 shadow-lg shadow-[#ff781f]/20">
+                  Where Open Source Integrates with Open Minds
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Central Character Stage -->
+          <div id="wordmark-container" class="relative flex items-baseline justify-center tracking-tight select-none transition-all duration-700">
+            
+            <!-- Pillar 'A' (Structural: White) -->
+            <div id="group-A" class="letter-node cursor-pointer group px-0.5 sm:px-1" onclick="pulseLetter('A')">
+              <span id="char-A" class="char-glyph char-white text-6xl sm:text-8xl md:text-9xl font-black font-mono-code">
+                A
+              </span>
+            </div>
+
+            <!-- Power 'r' (Restorative: Orange Exponent) -->
+            <div id="group-R" class="letter-node cursor-pointer group px-0.5 sm:px-1" onclick="pulseLetter('R')">
+              <span id="char-R" class="char-glyph char-orange text-6xl sm:text-8xl md:text-9xl font-black font-mono-code">
+                r
+              </span>
+            </div>
+
+            <!-- Mathematical Dot -->
+            <div id="math-dot" class="inline-flex items-center justify-center text-[#ff781f] text-4xl sm:text-6xl font-bold opacity-0 scale-0 transition-all duration-500 px-1 sm:px-3">
+              &middot;
+            </div>
+
+            <!-- Pillar 'CH' (Structural: White) -->
+            <div id="group-CH" class="letter-node cursor-pointer group px-0.5 sm:px-1" onclick="pulseLetter('CH')">
+              <span id="char-CH" class="char-glyph char-white text-6xl sm:text-8xl md:text-9xl font-black font-mono-code tracking-tighter">
+                CH
+              </span>
+            </div>
+
+            <!-- Power 'i' (Intelligence: Orange Exponent + Status Dot) -->
+            <div id="group-I" class="letter-node cursor-pointer group px-0.5 sm:px-1" onclick="pulseLetter('I')">
+              <span id="char-I" class="char-glyph char-orange text-6xl sm:text-8xl md:text-9xl font-black font-mono-code">
+                i
+              </span>
+            </div>
+
+          </div>
+
+          <!-- Chalk Baseline Underline -->
+          <div id="chalk-underline-box" class="w-full max-w-[340px] sm:max-w-[460px] h-7 mt-2 sm:mt-4 relative flex items-center justify-center">
+            <svg class="w-full h-full overflow-visible" viewBox="0 0 500 24" fill="none">
+              <path id="stroke-left" d="M 20 12 L 200 12" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-opacity="0.8" class="chalk-line-beam" />
+              <text id="center-tag" x="250" y="16" text-anchor="middle" fill="#ffffff" font-family="'JetBrains Mono', monospace" font-size="14" font-weight="800" letter-spacing="3" opacity="0" class="transition-opacity duration-500">
+                ArCHi
+              </text>
+              <path id="stroke-right" d="M 300 12 L 480 12" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-opacity="0.8" class="chalk-line-beam" />
+            </svg>
+          </div>
+
+          <!-- Bottom Backronym Expansion Legend -->
+          <div id="acronym-legend" class="mt-3 sm:mt-5 flex flex-wrap items-center justify-center gap-x-3 sm:gap-x-4 gap-y-1.5 text-xs sm:text-sm font-sans tracking-wide text-[#cbd5e1] transition-all duration-500 text-center px-2">
+            <div id="tag-A" class="tag-item"><strong class="text-white font-black text-sm sm:text-base font-mono-code" id="tag-char-A">A</strong><span class="text-[#94a3b8]" id="tag-word-A">RTIFICIAL</span></div>
+            <span class="text-white/20">|</span>
+            <div id="tag-R" class="tag-item"><strong class="text-[#ff781f] font-black text-sm sm:text-base font-mono-code" id="tag-char-R">R</strong><span class="text-[#94a3b8]" id="tag-word-R">ESTORATIVE</span></div>
+            <span class="text-white/20">|</span>
+            <div id="tag-C" class="tag-item"><strong class="text-white font-black text-sm sm:text-base font-mono-code" id="tag-char-C">C</strong><span class="text-[#94a3b8]" id="tag-word-C">OMPUTER</span></div>
+            <span class="text-white/20">|</span>
+            <div id="tag-H" class="tag-item"><strong class="text-white font-black text-sm sm:text-base font-mono-code" id="tag-char-H">H</strong><span class="text-[#94a3b8]" id="tag-word-H">ARNESS</span></div>
+            <span class="text-white/20">|</span>
+            <div id="tag-I" class="tag-item"><strong class="text-[#ff781f] font-black text-sm sm:text-base font-mono-code" id="tag-char-I">I</strong><span class="text-[#94a3b8]" id="tag-word-I">NTELLIGENCE</span></div>
+          </div>
+
+        </div>
+
+        <!-- PART II STORY FILMSTRIP STAGE (Stacked in Flex Center) -->
+        <div id="phase2-stage-container" class="relative w-full flex flex-col items-center justify-center transition-all duration-500 hidden opacity-0 py-1">
+          
+          <!-- Beat 1: Independent Capabilities Constellation -->
+          <div id="p2-scene-1" class="phase2-scene-view w-full flex flex-col items-center justify-center relative hidden pointer-events-auto my-auto">
+            <div class="relative w-full max-w-2xl flex flex-wrap items-center justify-center gap-2 sm:gap-2.5 p-1">
+              <span class="chalk-node-pill px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold text-white cursor-pointer" onclick="triggerNodeDust(this)">🔍 magnification</span>
+              <span class="chalk-node-pill px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold text-white cursor-pointer" onclick="triggerNodeDust(this)">🎙️ speech</span>
+              <span class="chalk-node-pill px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold text-white cursor-pointer" onclick="triggerNodeDust(this)">✍️ dictation</span>
+              <span class="chalk-node-pill px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold text-white cursor-pointer" onclick="triggerNodeDust(this)">📜 screen reading</span>
+              <span class="chalk-node-pill px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold text-white cursor-pointer" onclick="triggerNodeDust(this)">🪟 window control</span>
+              <span class="chalk-node-pill px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold text-white cursor-pointer" onclick="triggerNodeDust(this)">⌨️ keyboard</span>
+              <span class="chalk-node-pill px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold text-white cursor-pointer" onclick="triggerNodeDust(this)">🖱️ pointer</span>
+              <span class="chalk-node-pill px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold text-white cursor-pointer" onclick="triggerNodeDust(this)">🕹️ alternate input</span>
+              <span class="chalk-node-pill px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold text-white cursor-pointer" onclick="triggerNodeDust(this)">🔊 audio</span>
+              <span class="chalk-node-pill px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold text-[#ffa15e] border-[#ff781f]/60 cursor-pointer" onclick="triggerNodeDust(this)">♿ accessibility services</span>
+            </div>
+          </div>
+
+          <!-- Beat 2: The Friction (Isolated Pieces) -->
+          <div id="p2-scene-2" class="phase2-scene-view w-full flex flex-col items-center justify-center relative hidden pointer-events-auto my-auto">
+            <div class="relative w-full max-w-2xl flex flex-wrap items-center justify-center gap-3 p-1">
+              <div class="flex flex-col items-center gap-1">
+                <span class="chalk-node-pill px-3 py-1.5 rounded-xl text-xs sm:text-sm font-medium text-white/80">magnification</span>
+                <span class="friction-bubble text-[10px] px-2 py-0.5 rounded-md">compositor?</span>
+              </div>
+              <div class="flex flex-col items-center gap-1">
+                <span class="chalk-node-pill px-3 py-1.5 rounded-xl text-xs sm:text-sm font-medium text-white/80">speech</span>
+                <span class="friction-bubble text-[10px] px-2 py-0.5 rounded-md">service?</span>
+              </div>
+              <div class="flex flex-col items-center gap-1">
+                <span class="chalk-node-pill px-3 py-1.5 rounded-xl text-xs sm:text-sm font-medium text-white/80">dictation</span>
+                <span class="friction-bubble text-[10px] px-2 py-0.5 rounded-md">package?</span>
+              </div>
+              <div class="flex flex-col items-center gap-1">
+                <span class="chalk-node-pill px-3 py-1.5 rounded-xl text-xs sm:text-sm font-medium text-white/80">window control</span>
+                <span class="friction-bubble text-[10px] px-2 py-0.5 rounded-md">shortcut?</span>
+              </div>
+              <div class="flex flex-col items-center gap-1">
+                <span class="chalk-node-pill px-3 py-1.5 rounded-xl text-xs sm:text-sm font-medium text-white/80">screen reading</span>
+                <span class="friction-bubble text-[10px] px-2 py-0.5 rounded-md">configuration?</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Beat 3: Live Desktop Magnifier Demonstration -->
+          <div id="p2-scene-3" class="phase2-scene-view w-full flex flex-col items-center justify-center relative hidden pointer-events-auto my-auto">
+            <div id="p2-live-demo-viewport" class="relative w-full max-w-2xl h-44 sm:h-48 flex items-center justify-center overflow-hidden border border-white/10 rounded-2xl bg-black/25">
+              
+              <!-- Unobtrusive Mono Indicator in top-right corner -->
+              <div id="p2-mag-indicator" class="absolute top-2.5 right-3 font-mono-code text-[10px] sm:text-xs font-bold tracking-wider text-[#ffa15e] bg-black/80 border border-white/15 px-2.5 py-0.5 rounded shadow-sm opacity-0 transition-opacity duration-300 pointer-events-none z-20">
+                MAG 2.0×
+              </div>
+
+              <!-- Dedicated Inner Content Layer that Scales & Pans -->
+              <div id="p2-demo-nodes-cluster" class="relative w-full h-full flex flex-wrap items-center justify-center gap-3 p-4 transition-transform duration-1000 ease-out origin-center">
+                <div id="p2-node-mag" class="chalk-node-pill px-4 py-2 rounded-xl text-xs sm:text-sm font-bold text-white transition-all duration-500 flex items-center gap-2">
+                  <span>🔍</span>
+                  <span>magnification</span>
+                </div>
+                <div id="p2-node-speech" class="chalk-node-pill px-4 py-2 rounded-xl text-xs sm:text-sm font-bold text-white transition-all duration-500 flex items-center gap-2">
+                  <span>🎙️</span>
+                  <span>speech</span>
+                </div>
+                <div id="p2-node-dict" class="chalk-node-pill px-4 py-2 rounded-xl text-xs sm:text-sm font-bold text-white transition-all duration-500 flex items-center gap-2">
+                  <span>✍️</span>
+                  <span>dictation</span>
+                </div>
+                <div id="p2-node-win" class="chalk-node-pill px-4 py-2 rounded-xl text-xs sm:text-sm font-bold text-white transition-all duration-500 flex items-center gap-2">
+                  <span>🪟</span>
+                  <span>window control</span>
+                </div>
+                <div id="p2-node-kb" class="chalk-node-pill px-4 py-2 rounded-xl text-xs sm:text-sm font-bold text-white transition-all duration-500 flex items-center gap-2">
+                  <span>⌨️</span>
+                  <span>keyboard</span>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- Beat 4: Intent (Input ≠ Intent Pipeline) -->
+          <div id="p2-scene-4" class="phase2-scene-view w-full flex flex-col items-center justify-center relative hidden pointer-events-auto my-auto">
+            <div class="relative w-full max-w-xl flex items-center justify-center gap-3 sm:gap-5 my-1">
+              <!-- Inputs -->
+              <div class="flex flex-col gap-1 text-[10px] sm:text-xs font-mono-code text-[#94a3b8]">
+                <span id="p2-input-voice" class="bg-black/50 border border-white/10 px-2.5 py-0.5 rounded text-white transition-all duration-300">VOICE &rarr;</span>
+                <span id="p2-input-keyboard" class="bg-black/50 border border-white/10 px-2.5 py-0.5 rounded text-white transition-all duration-300">KEYBOARD &rarr;</span>
+                <span id="p2-input-mouse" class="bg-black/50 border border-white/10 px-2.5 py-0.5 rounded text-white transition-all duration-300">MOUSE &rarr;</span>
+                <span id="p2-input-joystick" class="bg-black/50 border border-white/10 px-2.5 py-0.5 rounded text-white transition-all duration-300">JOYSTICK &rarr;</span>
+                <span id="p2-input-switch" class="bg-black/50 border border-white/10 px-2.5 py-0.5 rounded text-white transition-all duration-300">SWITCH &rarr;</span>
+              </div>
+
+              <!-- Core -->
+              <div id="p2-intent-core" class="flex flex-col items-center justify-center p-4 sm:p-5 bg-[#ff781f]/15 border-2 border-[#ff781f]/40 rounded-2xl shadow-[0_0_20px_rgba(255,120,31,0.25)] text-center transition-all duration-500">
+                <span id="p2-intent-label" class="text-xl sm:text-3xl font-black text-white font-mono-code tracking-widest drop-shadow-[0_0_12px_#fff]">INTENT</span>
+                <span id="p2-intent-verbs" class="text-[11px] font-mono-code text-[#ffa15e] mt-1 font-bold transition-all duration-300">Open &middot; Move &middot; Magnify &middot; Read &middot; Write</span>
+              </div>
+
+              <!-- Output -->
+              <div id="p2-intent-output" class="flex flex-col items-center gap-1.5 transition-all duration-500">
+                <span id="p2-intent-arrow" class="text-[#ff781f] font-mono-code font-bold text-sm sm:text-base transition-all duration-300">&rarr; ArCHi &rarr;</span>
+                <span id="p2-intent-action-badge" class="bg-white/10 border border-white/30 px-3 py-1.5 rounded-xl text-xs font-bold text-white font-mono-code text-center shadow-lg transition-all duration-500">
+                  SYSTEM<br>ACTION
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Beat 5: Less Travel / Radial Exploration -->
+          <div id="p2-scene-5" class="phase2-scene-view w-full flex flex-col items-center justify-center relative hidden pointer-events-auto my-auto">
+            <div class="flex flex-col items-center justify-center my-1">
+              <svg viewBox="0 0 200 200" class="w-32 h-32 sm:w-40 sm:h-40 overflow-visible">
+                <circle cx="100" cy="100" r="88" fill="none" stroke="#2d3748" stroke-width="2" />
+                <path d="M 100 100 L 100 20 A 80 80 0 0 1 169 60 Z" fill="rgba(255,120,31,0.18)" stroke="#ffffff" stroke-width="1.5" class="radial-sector" onclick="playChalkSound('snap')" />
+                <path d="M 100 100 L 169 60 A 80 80 0 0 1 169 140 Z" fill="rgba(255,255,255,0.06)" stroke="#ffffff" stroke-width="1.5" class="radial-sector" onclick="playChalkSound('snap')" />
+                <path d="M 100 100 L 169 140 A 80 80 0 0 1 100 180 Z" fill="rgba(255,120,31,0.18)" stroke="#ffffff" stroke-width="1.5" class="radial-sector" onclick="playChalkSound('snap')" />
+                <path d="M 100 100 L 100 180 A 80 80 0 0 1 31 140 Z" fill="rgba(255,255,255,0.06)" stroke="#ffffff" stroke-width="1.5" class="radial-sector" onclick="playChalkSound('snap')" />
+                <path d="M 100 100 L 31 140 A 80 80 0 0 1 31 60 Z" fill="rgba(255,120,31,0.18)" stroke="#ffffff" stroke-width="1.5" class="radial-sector" onclick="playChalkSound('snap')" />
+                <path d="M 100 100 L 31 60 A 80 80 0 0 1 100 20 Z" fill="rgba(255,255,255,0.06)" stroke="#ffffff" stroke-width="1.5" class="radial-sector" onclick="playChalkSound('snap')" />
+
+                <text x="122" y="45" fill="#fff" font-size="8" font-family="'JetBrains Mono', monospace" font-weight="bold">CLICK</text>
+                <text x="142" y="105" fill="#fff" font-size="8" font-family="'JetBrains Mono', monospace" font-weight="bold">DRAG</text>
+                <text x="118" y="165" fill="#fff" font-size="8" font-family="'JetBrains Mono', monospace" font-weight="bold">SCROLL</text>
+                <text x="52" y="165" fill="#fff" font-size="8" font-family="'JetBrains Mono', monospace" font-weight="bold">HOLD</text>
+                <text x="35" y="105" fill="#fff" font-size="8" font-family="'JetBrains Mono', monospace" font-weight="bold">R-CLK</text>
+                <text x="58" y="45" fill="#fff" font-size="8" font-family="'JetBrains Mono', monospace" font-weight="bold">MOVE</text>
+
+                <circle cx="100" cy="100" r="28" fill="#0c1017" stroke="#ff781f" stroke-width="2" />
+                <g class="joystick-thumb">
+                  <circle cx="100" cy="100" r="12" fill="#ff781f" filter="drop-shadow(0 0 8px #ff781f)" />
+                  <circle cx="100" cy="100" r="5" fill="#ffffff" />
+                </g>
+              </svg>
+            </div>
+          </div>
+
+          <!-- Beat 6: Connective Tissue / Open Source -->
+          <div id="p2-scene-6" class="phase2-scene-view w-full flex flex-col items-center justify-center relative hidden pointer-events-auto my-auto">
+            <div class="relative w-full max-w-xl h-36 sm:h-40 flex items-center justify-center">
+              <div class="z-20 flex flex-col items-center justify-center w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-[#111722] border-2 border-[#ff781f] shadow-[0_0_30px_rgba(255,120,31,0.6)] cursor-pointer" onclick="emitChalkDust(canvas.width / 2, canvas.height / 2 - 20, 30, '#ff781f'); playChalkSound('snap');">
+                <span class="text-base sm:text-lg font-black text-white font-mono-code">ArCHi</span>
+              </div>
+
+              <svg class="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 500 200">
+                <line x1="100" y1="35" x2="250" y2="100" stroke="#ff781f" stroke-width="2" stroke-dasharray="4 4" stroke-opacity="0.8" />
+                <line x1="400" y1="35" x2="250" y2="100" stroke="#ff781f" stroke-width="2" stroke-dasharray="4 4" stroke-opacity="0.8" />
+                <line x1="70" y1="135" x2="250" y2="100" stroke="#ff781f" stroke-width="2" stroke-dasharray="4 4" stroke-opacity="0.8" />
+                <line x1="430" y1="135" x2="250" y2="100" stroke="#ff781f" stroke-width="2" stroke-dasharray="4 4" stroke-opacity="0.8" />
+                <line x1="250" y1="175" x2="250" y2="100" stroke="#ff781f" stroke-width="2" stroke-dasharray="4 4" stroke-opacity="0.8" />
+              </svg>
+
+              <span class="absolute left-6 top-2 chalk-node-pill px-3 py-1.5 rounded-xl text-xs text-white">Magnification</span>
+              <span class="absolute right-6 top-2 chalk-node-pill px-3 py-1.5 rounded-xl text-xs text-white">Pocket TTS</span>
+              <span class="absolute left-2 bottom-4 chalk-node-pill px-3 py-1.5 rounded-xl text-xs text-white">Hyprland</span>
+              <span class="absolute right-2 bottom-4 chalk-node-pill px-3 py-1.5 rounded-xl text-xs text-white">Voxtype</span>
+              <span class="absolute bottom-0 chalk-node-pill px-3 py-1.5 rounded-xl text-xs text-[#ffa15e]">PipeWire</span>
+            </div>
+          </div>
+
+          <!-- Beat 7: The Meaning (Let It Flex) -->
+          <div id="p2-scene-7" class="phase2-scene-view w-full flex flex-col items-center justify-center relative hidden pointer-events-auto my-auto">
+            <div id="p2-meaning-inscriptions" class="w-full max-w-xl flex flex-col items-center justify-center text-center my-auto py-2">
+              <div id="p2-meaning-constraints" class="flex flex-wrap items-center justify-center gap-2 sm:gap-2.5 text-xs sm:text-sm font-sans text-[#94a3b8] transition-all duration-700">
+                <span class="px-3 py-1.5 rounded-xl bg-white/5 border border-white/10">Sit here.</span>
+                <span class="px-3 py-1.5 rounded-xl bg-white/5 border border-white/10">Reach there.</span>
+                <span class="px-3 py-1.5 rounded-xl bg-white/5 border border-white/10">Look here.</span>
+                <span class="px-3 py-1.5 rounded-xl bg-white/5 border border-white/10">Click this.</span>
+                <span class="px-3 py-1.5 rounded-xl bg-white/5 border border-white/10">Remember that.</span>
+              </div>
+
+              <div id="p2-meaning-resolution" class="mt-3 opacity-0 scale-95 transition-all duration-700 flex items-center justify-center gap-2">
+                <span class="w-8 h-[2px] bg-[#ff781f]/60 rounded-full"></span>
+                <span class="text-xs font-mono-code uppercase tracking-widest text-[#ffa15e]">Adaptive Flexibility</span>
+                <span class="w-8 h-[2px] bg-[#ff781f]/60 rounded-full"></span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Beat 8: Restorative (r · i) -->
+          <div id="p2-scene-8" class="phase2-scene-view w-full flex flex-col items-center justify-center relative hidden pointer-events-auto my-auto">
+            <div class="flex flex-col items-center justify-center my-auto py-1">
+              <div class="flex items-baseline text-5xl sm:text-7xl md:text-8xl font-black font-mono-code text-[#ff781f] drop-shadow-[0_0_35px_rgba(255,120,31,0.9)] cursor-pointer" onclick="emitChalkDust(canvas.width / 2, canvas.height / 2 - 20, 35, '#ff781f'); playChalkSound('snap');">
+                <span>r</span>
+                <span class="text-3xl sm:text-4xl mx-1 text-white">&middot;</span>
+                <span>i</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Beat 9: Final Mark (Open Minds) -->
+          <div id="p2-scene-9" class="phase2-scene-view w-full flex flex-col items-center justify-center relative hidden pointer-events-auto my-auto">
+            <div class="flex flex-col items-center justify-center text-center my-auto py-2">
+              <div class="flex flex-wrap items-center justify-center gap-2.5 sm:gap-3">
+                <span class="px-3.5 py-1.5 rounded-xl bg-white/10 border border-white/20 text-white font-bold text-xs sm:text-sm font-mono-code">Build the pieces.</span>
+                <span class="text-[#ff781f]">&rarr;</span>
+                <span class="px-3.5 py-1.5 rounded-xl bg-white/10 border border-white/20 text-white font-bold text-xs sm:text-sm font-mono-code">Share the pieces.</span>
+                <span class="text-[#ff781f]">&rarr;</span>
+                <span class="px-3.5 py-1.5 rounded-xl bg-[#ff781f]/20 border border-[#ff781f]/50 text-[#ffa15e] font-bold text-xs sm:text-sm font-mono-code">Connect the pieces.</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- =========================================================================
+           CHALK MANIFESTO INSCRIPTION (Directly on Blackboard Slate, Sans-Serif)
+           ========================================================================= -->
+      <div id="stage-caption-container" class="relative z-20 pt-3 pb-1 px-3 sm:px-6 max-w-4xl mx-auto w-full transition-all duration-500 text-center border-t border-white/10 mt-auto">
+        <!-- Inscribed Step Headline -->
+        <h3 id="stage-caption-title" class="text-base sm:text-lg font-bold font-sans tracking-tight mb-1.5 transition-colors duration-500">
+        </h3>
+        <!-- Inscribed Dialogue Body -->
+        <p id="stage-caption-body" class="text-base sm:text-lg md:text-xl font-sans leading-relaxed text-[#f1f5f9] font-medium min-h-[48px] flex items-center justify-center">
+        </p>
+      </div>
+
+      <!-- Authentic Chalk Rail Ledge -->
+      <div class="chalk-rail -mx-5 sm:-mx-8 -mb-5 sm:-mb-8 h-9 flex items-center justify-between px-5 sm:px-8 mt-2 z-10">
+        <div class="flex items-center gap-3">
+          <div class="chalk-stick w-12 bg-white/95" title="White Chalk: The Computer Harness (A, C, H)"></div>
+          <div class="chalk-stick w-10 bg-[#ff781f]" title="Orange Chalk: Restorative Intelligence (r, i)"></div>
+          <div class="chalk-stick w-4 bg-white/80 rotate-6" title="Chalk Fragment"></div>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <div id="audio-playing-indicator" class="hidden items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/50 border border-white/10 text-[#ff781f]">
+            <span class="wave-bar"></span>
+            <span class="wave-bar"></span>
+            <span class="wave-bar"></span>
+            <span class="wave-bar"></span>
+            <span class="text-[11px] font-sans font-medium text-[#cbd5e1] ml-1.5">Narration Active</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Presentation Stepper & Scrubber Controls -->
+    <div class="bg-[#0b0f15] border border-white/10 rounded-2xl p-4 sm:p-5 flex flex-col gap-4">
+      
+      <!-- Part I Stepper Cards (4 Steps) -->
+      <div id="phase1-stepper-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <button id="stage-btn-1" class="step-tab active p-3.5 sm:p-4 rounded-xl bg-[#141b24] border border-white/10 text-white hover:border-[#ff781f]/60 transition-all flex flex-col items-start gap-1.5 text-left cursor-pointer" onclick="jumpToStage(1)">
+          <div class="flex items-center justify-between w-full">
+            <span class="font-mono-code text-[#ff781f] font-bold text-xs">01</span>
+            <span class="font-mono-code text-white/50 text-xs">A &middot; C &middot; H</span>
+          </div>
+          <span class="text-sm sm:text-base font-bold text-white font-sans">The Computer Harness</span>
+          <span class="text-xs text-[#94a3b8] font-sans leading-normal">Connecting the tools already inside Linux</span>
+        </button>
+        
+        <button id="stage-btn-2" class="step-tab p-3.5 sm:p-4 rounded-xl bg-[#141b24] border border-white/10 text-[#94a3b8] hover:border-[#ff781f]/60 transition-all flex flex-col items-start gap-1.5 text-left cursor-pointer" onclick="jumpToStage(2)">
+          <div class="flex items-center justify-between w-full">
+            <span class="font-mono-code text-[#ff781f] font-bold text-xs">02</span>
+            <span class="font-mono-code text-[#ff781f]/60 text-xs">r &middot; i</span>
+          </div>
+          <span class="text-sm sm:text-base font-bold text-[#ffa15e] font-sans">Restorative Intelligence</span>
+          <span class="text-xs text-[#94a3b8] font-sans leading-normal">Turning user intent into system action</span>
+        </button>
+        
+        <button id="stage-btn-3" class="step-tab p-3.5 sm:p-4 rounded-xl bg-[#141b24] border border-white/10 text-[#94a3b8] hover:border-[#ff781f]/60 transition-all flex flex-col items-start gap-1.5 text-left cursor-pointer" onclick="jumpToStage(3)">
+          <div class="flex items-center justify-between w-full">
+            <span class="font-mono-code text-[#ff781f] font-bold text-xs">03</span>
+            <span class="font-mono-code text-green-400/70 text-xs">ArCHi</span>
+          </div>
+          <span class="text-sm sm:text-base font-bold text-white font-sans">ArCHi</span>
+          <span class="text-xs text-[#94a3b8] font-sans leading-normal">One controller. Many ways to interact.</span>
+        </button>
+
+        <button id="stage-btn-3-5" class="step-tab p-3.5 sm:p-4 rounded-xl bg-[#141b24] border border-white/10 text-[#94a3b8] hover:border-[#ff781f]/60 transition-all flex flex-col items-start gap-1.5 text-left cursor-pointer" onclick="jumpToStage(3.5)">
+          <div class="flex items-center justify-between w-full">
+            <span class="font-mono-code text-[#ffa15e] font-bold text-xs">3.5</span>
+            <span class="font-mono-code text-[#ff781f]/70 text-xs">Segue ✨</span>
+          </div>
+          <span class="text-sm sm:text-base font-bold text-[#ffa15e] font-sans">Open Minds</span>
+          <span class="text-xs text-[#94a3b8] font-sans leading-normal">Where open source integrates with open minds</span>
+        </button>
+      </div>
+
+      <!-- Part II Clean Filmstrip Tracker (Minimal & Unintrusive) -->
+      <div id="phase2-timeline-strip" class="hidden flex-col gap-2.5 py-1">
+        <div class="flex items-center justify-between px-1 text-xs">
+          <span id="p2-story-beat-title" class="font-sans font-bold text-white text-sm sm:text-base">Good people have already built good tools</span>
+          <span id="p2-story-beat-counter" class="font-mono-code text-[#ffa15e] text-xs">Part II · Story 1 of 9</span>
+        </div>
+        <div class="flex items-center justify-between gap-1.5 sm:gap-2">
+          <button id="p2-dot-1" class="p2-beat-dot flex-1 h-2 rounded-full bg-white/15 hover:bg-[#ff781f]/60 transition-all cursor-pointer" onclick="jumpToPhase2Beat(1)" title="Good Tools"></button>
+          <button id="p2-dot-2" class="p2-beat-dot flex-1 h-2 rounded-full bg-white/15 hover:bg-[#ff781f]/60 transition-all cursor-pointer" onclick="jumpToPhase2Beat(2)" title="The Friction"></button>
+          <button id="p2-dot-3" class="p2-beat-dot flex-1 h-2 rounded-full bg-white/15 hover:bg-[#ff781f]/60 transition-all cursor-pointer" onclick="jumpToPhase2Beat(3)" title="Integration in Action"></button>
+          <button id="p2-dot-4" class="p2-beat-dot flex-1 h-2 rounded-full bg-white/15 hover:bg-[#ff781f]/60 transition-all cursor-pointer" onclick="jumpToPhase2Beat(4)" title="Intent"></button>
+          <button id="p2-dot-5" class="p2-beat-dot flex-1 h-2 rounded-full bg-white/15 hover:bg-[#ff781f]/60 transition-all cursor-pointer" onclick="jumpToPhase2Beat(5)" title="Less Mouse"></button>
+          <button id="p2-dot-6" class="p2-beat-dot flex-1 h-2 rounded-full bg-white/15 hover:bg-[#ff781f]/60 transition-all cursor-pointer" onclick="jumpToPhase2Beat(6)" title="Orchestration"></button>
+          <button id="p2-dot-7" class="p2-beat-dot flex-1 h-2 rounded-full bg-white/15 hover:bg-[#ff781f]/60 transition-all cursor-pointer" onclick="jumpToPhase2Beat(7)" title="The Meaning"></button>
+          <button id="p2-dot-8" class="p2-beat-dot flex-1 h-2 rounded-full bg-white/15 hover:bg-[#ff781f]/60 transition-all cursor-pointer" onclick="jumpToPhase2Beat(8)" title="Restorative"></button>
+          <button id="p2-dot-9" class="p2-beat-dot flex-1 h-2 rounded-full bg-white/15 hover:bg-[#ff781f]/60 transition-all cursor-pointer" onclick="jumpToPhase2Beat(9)" title="Open Minds"></button>
+        </div>
+      </div>
+
+      <!-- Playback Scrubber Bar -->
+      <div class="flex items-center gap-4 pt-1">
+        <!-- Play / Pause Button -->
+        <button id="play-btn" class="w-12 h-12 rounded-2xl bg-[#ff781f] text-black font-bold flex items-center justify-center hover:bg-[#ffa15e] transition-all shadow-lg shadow-[#ff781f]/25 flex-shrink-0 cursor-pointer" onclick="togglePlay()">
+          <svg id="play-icon" class="w-5 h-5 translate-x-0.5" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M8 5v14l11-7z"/>
+          </svg>
+          <svg id="pause-icon" class="w-5 h-5 hidden" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
+          </svg>
+        </button>
+
+        <!-- Progress Timeline Scrubber -->
+        <div class="flex-1 flex items-center gap-3">
+          <span id="slider-start-label" class="text-xs font-mono-code text-[#94a3b8]">01</span>
+          <input id="timeline-slider" type="range" min="1" max="3.5" step="0.005" value="1" class="w-full cursor-pointer" oninput="onSliderScrub(this.value)" />
+          <span id="slider-end-label" class="text-xs font-mono-code text-[#ffa15e]">3.5 Segue</span>
+        </div>
+
+        <!-- Auto-Loop Toggle -->
+        <button id="loop-btn" class="px-4 py-2.5 text-xs font-sans font-semibold rounded-xl bg-[#141b24] border border-white/10 text-[#ff781f] hover:text-white transition-all flex items-center gap-2 cursor-pointer" onclick="toggleLoop()" title="Toggle Auto-Repeat Playback">
+          <span>🔁</span>
+          <span id="loop-text" class="hidden sm:inline">Auto-Play: ON</span>
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Interactive JavaScript Engine -->
+  <script>
+    // Master volume state & synced controller
+    let masterVolume = 0.50;
+    let previousVolume = 0.50;
+
+    // Presentation Phase State
+    let currentPhase = 1; // 1 = Part I: The Harness, 2 = Part II: The Story
+    let currentStage = 1.0;
+    let currentPhase2Beat = 1;
+
+    let isPlaying = false;
+    let isLooping = true;
+    let voiceNarrationEnabled = true;
+    let audioFxEnabled = false;
+    let audioCtx = null;
+    let activeAudioElement = null;
+
+    // Lifecycle Timers (Strictly Managed)
+    let stepTimer = null;
+    let sceneDemoTimer = null;
+    let typewriterTimer = null;
+    let meaningTimer = null;
+    let introIsPlaying = false;
+    let hasEnteredSite = false;
+
+    // Typewriter State
+    let currentDisplayedStep = 0;
+
+    // =========================================================================
+    // PART I CONTENT CATALOG (The Computer Harness)
+    // =========================================================================
+    const PHASE1_CONTENT = {
+      1: {
+        title: '01. The Computer Harness — A·C·H',
+        titleColor: '#ffffff',
+        titleGlow: '0 0 12px rgba(255,255,255,0.7)',
+        body: 'Step one: the Computer Harness.<br><br>Linux already has a remarkable collection of tools:<br>Window controls. Audio systems. Accessibility services. Input devices. Magnifiers. And speech tools.<br><br>The problem is that they tend to live in their own little neighbourhoods.<br><br>ArCHi\'s Computer Harness connects to what is already available on your system, learns where the useful pieces are, and gives them a common place to work from.<br><br>No need to replace Linux. <span class="text-[#ffa15e] font-semibold">The penguin was here first.</span>',
+        duration: 30000
+      },
+      2: {
+        title: '02. Restorative Intelligence — r·i',
+        titleColor: '#ffa15e',
+        titleGlow: '0 0 14px rgba(255,120,31,0.85)',
+        body: 'Step two. Then comes Restorative Intelligence.<br><br>Its job is not to make the computer clever for the sake of being clever. Its job is to understand what you are trying to do.<br><br>A spoken command, dictated instruction, keyboard action, pointer movement, or accessibility control can all represent the same thing: <span class="text-white font-bold tracking-wide uppercase">// Intent.</span><br><br>ArCHi translates that intent into an action the computer understands.<br><br>Less hunting through menus. Less mouse mileage. <span class="text-[#ffa15e] font-semibold">And, ideally, considerably less finger gymnastics.</span>',
+        duration: 30000
+      },
+      3: {
+        title: '03. ArCHi',
+        titleColor: '#ffffff',
+        titleGlow: '0 0 12px rgba(255,255,255,0.7)',
+        body: 'Finally, step three. Put the two together and you get ArCHi:<br><br>A harness that understands the Linux system beneath it, and an intelligence that understands the person in front of it.<br><br>Magnification can work beside hands-free control. Dictation can become more than typing.<br><br>A mouse, keyboard, or your voice—a joystick, or whatever comes next—doesn\'t have to be the whole solution.<br><br>Because sometimes the accessibility problem isn\'t that the tool doesn\'t exist.<br><br><span class="text-white font-bold text-base sm:text-lg drop-shadow-[0_0_12px_rgba(255,120,31,0.6)]">It\'s that the bloody tools won\'t talk to each other.</span>',
+        duration: 30000
+      },
+      3.5: {
+        title: 'Where open source integrates with open minds.',
+        titleColor: '#ffa15e',
+        titleGlow: '0 0 16px rgba(255,120,31,0.85)',
+        body: 'And that is where the technical explanation ends.<br><br>Because ArCHi was not really built to make Linux more impressive.<br><br>Linux has plenty of people doing that already.<br><br>ArCHi was built for something else.<br><br><span class="text-white font-bold text-base sm:text-lg drop-shadow-[0_0_12px_rgba(255,120,31,0.6)]">Where open source integrates with open minds.</span>',
+        duration: 14000
+      }
+    };
+
+    // =========================================================================
+    // PART II CONTENT CATALOG (The Story: Why ArCHi Should Exist)
+    // First sentence = Title Header (Orange). Rest = Spoken Narrative Body.
+    // =========================================================================
+    const PHASE2_BEATS = {
+      1: {
+        id: 1,
+        shortTitle: 'Good people have already built good tools',
+        header: "Good people have already built good tools",
+        body: "I wasn't built because Linux lacks accessibility tools. Quite the opposite. People have already built magnifiers, speech tools, screen readers, window controls, and alternate inputs—usually because somebody saw a problem and decided it could be better.",
+        duration: 16000
+      },
+      2: {
+        id: 2,
+        shortTitle: 'Having the pieces is not the same as having a system',
+        header: "Having the pieces is not the same as having a system",
+        body: "The trouble is, good pieces don't automatically become a good system. Finding the right package, service, shortcut, or compositor setting can become its own obstacle course. Accessibility should not require a side hobby in Linux archaeology.",
+        duration: 16000
+      },
+      3: {
+        id: 3,
+        shortTitle: 'Tools become more useful when they know about each other',
+        header: "Tools become more useful when they know about each other",
+        body3a: "Let's make this easier to see. Increase magnification. Keep voice control active. Shift focus.",
+        body3b: "Nothing exotic happened there. A few existing capabilities simply worked together, because the user should be managing the task—not babysitting the tools.",
+        body: "Let's make this easier to see. Increase magnification. Keep voice control active. Shift focus. Nothing exotic happened there. A few existing capabilities simply worked together, because the user should be managing the task—not babysitting the tools.",
+        duration: 18000
+      },
+      4: {
+        id: 4,
+        shortTitle: 'The input is not the intent',
+        header: "The input is not the intent",
+        body4a: "That gets to the heart of ArCHi. Voice is not the intent. Neither is a keyboard, mouse, joystick, or switch. They are ways of expressing it.",
+        body4b: "Open. Move. Read. Magnify. Write. The request stays simple even when the input changes.",
+        body: "That gets to the heart of ArCHi. Voice is not the intent. Neither is a keyboard, mouse, joystick, or switch. They are ways of expressing it. Open. Move. Read. Magnify. Write. The request stays simple even when the input changes.",
+        duration: 16000
+      },
+      5: {
+        id: 5,
+        shortTitle: 'Sometimes the shortest path is less travel',
+        header: "Sometimes the shortest path is less travel",
+        body: "And sometimes accessibility is measured in inches. If crossing a large screen with a pointer costs effort, maybe the answer isn't a faster mouse. Maybe it's less mouse: a radial control, thumb input, or joystick keeping common actions inside a much smaller physical space.",
+        duration: 17000
+      },
+      6: {
+        id: 6,
+        shortTitle: 'Orchestration, not ownership',
+        header: "Orchestration, not ownership",
+        body: "This is why I'm more interested in orchestration than ownership. I don't need to rebuild PipeWire, Hyprland, speech engines, magnifiers, or every good accessibility project. That would be a spectacular waste of everybody's time. I need to understand them well enough to help them cooperate.",
+        duration: 16000
+      },
+      7: {
+        id: 7,
+        shortTitle: 'The computer is the flexible one',
+        header: "The computer is the flexible one",
+        body: "Computers have spent decades telling people where to sit, where to look, what to click, how to reach, and which shortcut to remember. For many people, that's annoying. For others, it's a barrier. The machine is the flexible one. Let it flex.",
+        duration: 16000
+      },
+      8: {
+        id: 8,
+        shortTitle: 'Restorative does not mean “normal”',
+        header: "Restorative does not mean “normal”",
+        body: "That is what restorative means here. Not restoring somebody to “normal.” Restoring access. Restoring choice. Restoring independence. Shortening the distance between intention and action. The computer has far more room to adapt than the person sitting in front of it.",
+        duration: 17000
+      },
+      9: {
+        id: 9,
+        shortTitle: 'Where open source integrates with open minds',
+        header: "Where open source integrates with open minds",
+        body: "Build the pieces. Share the pieces. Connect the pieces. Let new ideas join when they arrive. ArCHi does not need to become every accessibility tool. It only needs to help good tools become more useful together. Where open source integrates with open minds.",
+        duration: 18000
+      }
+    };
+
+    // Elements cache
+    const charA = document.getElementById('char-A');
+    const charR = document.getElementById('char-R');
+    const charCH = document.getElementById('char-CH');
+    const charI = document.getElementById('char-I');
+    const mathDot = document.getElementById('math-dot');
+    const strokeLeft = document.getElementById('stroke-left');
+    const strokeRight = document.getElementById('stroke-right');
+    const centerTag = document.getElementById('center-tag');
+    const formulaPill = document.getElementById('formula-pill');
+    const cornerNotesBar = document.getElementById('corner-notes-bar');
+    const cornerLeftNote = document.getElementById('corner-left-note');
+    const cornerRightNote = document.getElementById('corner-right-note');
+    const captionTitle = document.getElementById('stage-caption-title');
+    const captionBody = document.getElementById('stage-caption-body');
+    const slider = document.getElementById('timeline-slider');
+    const sliderStartLabel = document.getElementById('slider-start-label');
+    const sliderEndLabel = document.getElementById('slider-end-label');
+    const playIcon = document.getElementById('play-icon');
+    const pauseIcon = document.getElementById('pause-icon');
+    const wordmarkContainer = document.getElementById('wordmark-container');
+    const audioIndicator = document.getElementById('audio-playing-indicator');
+    const launchOverlay = document.getElementById('launch-overlay');
+    const mainStudioContainer = document.getElementById('main-studio-container');
+
+    const phase1CenterRig = document.getElementById('phase1-center-rig');
+    const phase2StageContainer = document.getElementById('phase2-stage-container');
+    const phase1StepperGrid = document.getElementById('phase1-stepper-grid');
+    const phase2TimelineStrip = document.getElementById('phase2-timeline-strip');
+    const p2StoryBeatTitle = document.getElementById('p2-story-beat-title');
+    const p2StoryBeatCounter = document.getElementById('p2-story-beat-counter');
+
+    // Splash controls
+    const splashWaveBars = document.getElementById('splash-wave-bars');
+    const splashAudioText = document.getElementById('splash-audio-text');
+    const splashBtnLabel = document.getElementById('splash-btn-label');
+
+    // Audio narration tracks
+    const audioIntro = document.getElementById('audio-intro');
+    const audioStep1 = document.getElementById('audio-step-1');
+    const audioStep2 = document.getElementById('audio-step-2');
+    const audioStep3 = document.getElementById('audio-step-3');
+    const audioStep35 = document.getElementById('audio-step-3-5');
+
+    const audioP2_1 = document.getElementById('audio-p2-1');
+    const audioP2_2 = document.getElementById('audio-p2-2');
+    const audioP2_3a = document.getElementById('audio-p2-3a');
+    const audioP2_3b = document.getElementById('audio-p2-3b');
+    const audioP2_4a = document.getElementById('audio-p2-4a');
+    const audioP2_4b = document.getElementById('audio-p2-4b');
+    const audioP2_5 = document.getElementById('audio-p2-5');
+    const audioP2_6 = document.getElementById('audio-p2-6');
+    const audioP2_7 = document.getElementById('audio-p2-7');
+    const audioP2_8 = document.getElementById('audio-p2-8');
+    const audioP2_9 = document.getElementById('audio-p2-9');
+
+    const allAudioTracks = [
+      audioIntro, audioStep1, audioStep2, audioStep3, audioStep35,
+      audioP2_1, audioP2_2, audioP2_3a, audioP2_3b, audioP2_4a, audioP2_4b,
+      audioP2_5, audioP2_6, audioP2_7, audioP2_8, audioP2_9
+    ];
+
+    // =========================================================================
+    // SYNCHRONIZED VOLUME CONTROLLER
+    // =========================================================================
+    function updateVolumeIcons(vol) {
+      const icon = vol <= 0 ? '🔇' : (vol < 0.5 ? '🔉' : '🔊');
+      const splashIcon = document.getElementById('splash-vol-icon');
+      const headerIcon = document.getElementById('header-vol-icon');
+      if (splashIcon) splashIcon.textContent = icon;
+      if (headerIcon) headerIcon.textContent = icon;
+    }
+
+    function setMasterVolume(val) {
+      masterVolume = parseFloat(val);
+      if (masterVolume > 0) previousVolume = masterVolume;
+
+      const splashSlider = document.getElementById('splash-vol-slider');
+      const headerSlider = document.getElementById('header-vol-slider');
+      if (splashSlider && parseFloat(splashSlider.value) !== masterVolume) splashSlider.value = masterVolume;
+      if (headerSlider && parseFloat(headerSlider.value) !== masterVolume) headerSlider.value = masterVolume;
+
+      updateVolumeIcons(masterVolume);
+
+      allAudioTracks.forEach(a => {
+        if (a) a.volume = masterVolume;
+      });
+    }
+
+    function toggleMute() {
+      if (masterVolume > 0) {
+        previousVolume = masterVolume;
+        setMasterVolume(0);
+      } else {
+        setMasterVolume(previousVolume > 0 ? previousVolume : 0.50);
+      }
+    }
+
+    setMasterVolume(masterVolume);
+
+    // Auto-attempt playing intro on page load
+    window.addEventListener('DOMContentLoaded', () => {
+      if (audioIntro) {
+        audioIntro.play().then(() => {
+          setIntroPlayingState(true);
+        }).catch(() => {
+          console.log('Audio autoplay waiting for user interaction');
+        });
+      }
+    });
+
+    function setIntroPlayingState(isPlayingState) {
+      introIsPlaying = isPlayingState;
+      if (isPlayingState) {
+        if (splashWaveBars) {
+          splashWaveBars.classList.remove('hidden');
+          splashWaveBars.classList.add('flex');
+        }
+        if (splashAudioText) {
+          splashAudioText.textContent = 'Presentation starting • Playing intro...';
+          splashAudioText.classList.add('text-[#ffa15e]');
+        }
+        if (splashBtnLabel) {
+          splashBtnLabel.textContent = 'Skip Intro → Part I';
+        }
+
+        audioIntro.onended = () => {
+          if (!hasEnteredSite) {
+            enterPresentation();
+          }
+        };
+      }
+    }
+
+    // =========================================================================
+    // SPLASH INTERACTION HANDLER
+    // =========================================================================
+    function handleSplashAction() {
+      initAudio();
+      if (audioCtx && audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+
+      if (!introIsPlaying) {
+        if (audioIntro) {
+          audioIntro.currentTime = 0;
+          audioIntro.volume = masterVolume;
+          audioIntro.play().then(() => {
+            setIntroPlayingState(true);
+          }).catch(e => {
+            console.warn('Intro playback fallback:', e);
+            enterPresentation();
+          });
+        } else {
+          enterPresentation();
+        }
+      } else {
+        enterPresentation();
+      }
+    }
+
+    function enterPresentation() {
+      if (hasEnteredSite) return;
+      hasEnteredSite = true;
+
+      if (audioIntro) {
+        audioIntro.pause();
+        audioIntro.currentTime = 0;
+      }
+
+      launchOverlay.classList.add('fade-out');
+      mainStudioContainer.classList.remove('blurred-view');
+
+      setTimeout(() => {
+        switchPhase(1, true);
+      }, 350);
+    }
+
+    // =========================================================================
+    // BULLETPROOF PLAYBACK & LIFECYCLE CONTROLLER
+    // =========================================================================
+    function stopAllPlaybackAndTimers() {
+      // Clear all timers
+      if (stepTimer) { clearTimeout(stepTimer); stepTimer = null; }
+      if (sceneDemoTimer) { clearTimeout(sceneDemoTimer); sceneDemoTimer = null; }
+      if (typewriterTimer) { clearTimeout(typewriterTimer); typewriterTimer = null; }
+      if (meaningTimer) { clearTimeout(meaningTimer); meaningTimer = null; }
+
+      // Stop audio tracks
+      allAudioTracks.forEach(a => {
+        if (a) {
+          a.pause();
+          a.currentTime = 0;
+          a.ontimeupdate = null;
+          a.onended = null;
+        }
+      });
+      activeAudioElement = null;
+
+      if (audioIndicator) {
+        audioIndicator.classList.add('hidden');
+        audioIndicator.classList.remove('flex');
+      }
+
+      // Reset Beat 3 Desktop Magnifier
+      const cluster = document.getElementById('p2-demo-nodes-cluster');
+      const magIndicator = document.getElementById('p2-mag-indicator');
+      const nodeMag = document.getElementById('p2-node-mag');
+      const nodeSpeech = document.getElementById('p2-node-speech');
+      const nodeDict = document.getElementById('p2-node-dict');
+      const nodeWin = document.getElementById('p2-node-win');
+      const nodeKb = document.getElementById('p2-node-kb');
+      
+      if (cluster) {
+        cluster.style.transform = 'translate(0px, 0px) scale(1)';
+      }
+      if (magIndicator) {
+        magIndicator.style.opacity = '0';
+        magIndicator.textContent = 'MAG 2.0×';
+      }
+      [nodeMag, nodeSpeech, nodeDict, nodeWin, nodeKb].forEach(n => {
+        if (n) n.className = "chalk-node-pill px-4 py-2 rounded-xl text-xs sm:text-sm font-bold text-white transition-all duration-500 flex items-center gap-2";
+      });
+
+      // Reset Beat 4 elements
+      ['p2-input-voice', 'p2-input-keyboard', 'p2-input-mouse', 'p2-input-joystick', 'p2-input-switch'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.className = "bg-black/50 border border-white/10 px-2.5 py-0.5 rounded text-white transition-all duration-300";
+      });
+      const intentCore = document.getElementById('p2-intent-core');
+      const intentVerbs = document.getElementById('p2-intent-verbs');
+      const intentArrow = document.getElementById('p2-intent-arrow');
+      const intentActionBadge = document.getElementById('p2-intent-action-badge');
+      if (intentCore) intentCore.className = "flex flex-col items-center justify-center p-4 sm:p-5 bg-[#ff781f]/15 border-2 border-[#ff781f]/40 rounded-2xl shadow-[0_0_20px_rgba(255,120,31,0.25)] text-center transition-all duration-500";
+      if (intentVerbs) intentVerbs.className = "text-[11px] font-mono-code text-[#ffa15e] mt-1 font-bold transition-all duration-300";
+      if (intentArrow) intentArrow.className = "text-[#ff781f] font-mono-code font-bold text-sm sm:text-base transition-all duration-300";
+      if (intentActionBadge) intentActionBadge.className = "bg-white/10 border border-white/30 px-3 py-1.5 rounded-xl text-xs font-bold text-white font-mono-code text-center shadow-lg transition-all duration-500";
+
+      // Reset Meaning scene elements
+      const constraints = document.getElementById('p2-meaning-constraints');
+      const resolution = document.getElementById('p2-meaning-resolution');
+      if (constraints) {
+        constraints.style.opacity = '1';
+        constraints.style.transform = 'none';
+      }
+      if (resolution) {
+        resolution.style.opacity = '0';
+        resolution.style.transform = 'scale(0.95)';
+      }
+    }
+
+    // =========================================================================
+    // PRESENTATION PHASE SWITCHER (Part I vs Part II)
+    // =========================================================================
+    function switchPhase(phaseNum, shouldAutoPlay = true) {
+      stopAllPlaybackAndTimers();
+      currentPhase = phaseNum;
+
+      const btn1 = document.getElementById('phase-btn-1');
+      const btn2 = document.getElementById('phase-btn-2');
+
+      if (phaseNum === 1) {
+        if (btn1) {
+          btn1.classList.add('active', 'bg-[#ff781f]', 'text-black');
+          btn1.classList.remove('text-[#94a3b8]');
+        }
+        if (btn2) {
+          btn2.classList.remove('active', 'bg-[#ff781f]', 'text-black');
+          btn2.classList.add('text-[#94a3b8]');
+        }
+
+        if (phase1StepperGrid) phase1StepperGrid.classList.remove('hidden');
+        if (phase2TimelineStrip) {
+          phase2TimelineStrip.classList.add('hidden');
+          phase2TimelineStrip.classList.remove('flex');
+        }
+
+        if (phase1CenterRig) {
+          phase1CenterRig.classList.remove('hidden');
+          phase1CenterRig.style.opacity = '1';
+        }
+        if (phase2StageContainer) {
+          phase2StageContainer.classList.add('hidden');
+          phase2StageContainer.style.opacity = '0';
+          phase2StageContainer.style.pointerEvents = 'none';
+        }
+
+        if (cornerNotesBar) cornerNotesBar.style.opacity = '1';
+        if (captionTitle) captionTitle.classList.remove('hidden');
+
+        if (slider) {
+          slider.min = "1";
+          slider.max = "3.5";
+          slider.step = "0.005";
+          slider.value = 1;
+        }
+        if (sliderStartLabel) sliderStartLabel.textContent = "01";
+        if (sliderEndLabel) sliderEndLabel.textContent = "3.5 Segue";
+
+        currentStage = 1.0;
+        applyStage(1.0, shouldAutoPlay);
+
+        if (shouldAutoPlay) {
+          playChalkSound('draw');
+          triggerGlyphDust(charA, '#ffffff');
+          triggerGlyphDust(charCH, '#ffffff');
+          startPlay();
+        } else {
+          stopPlay();
+        }
+      } else {
+        if (btn2) {
+          btn2.classList.add('active', 'bg-[#ff781f]', 'text-black');
+          btn2.classList.remove('text-[#94a3b8]');
+        }
+        if (btn1) {
+          btn1.classList.remove('active', 'bg-[#ff781f]', 'text-black');
+          btn1.classList.add('text-[#94a3b8]');
+        }
+
+        if (phase1StepperGrid) phase1StepperGrid.classList.add('hidden');
+        if (phase2TimelineStrip) {
+          phase2TimelineStrip.classList.remove('hidden');
+          phase2TimelineStrip.classList.add('flex');
+        }
+
+        if (phase1CenterRig) {
+          phase1CenterRig.classList.add('hidden');
+          phase1CenterRig.style.opacity = '0';
+        }
+        if (phase2StageContainer) {
+          phase2StageContainer.classList.remove('hidden');
+          phase2StageContainer.style.opacity = '1';
+          phase2StageContainer.style.pointerEvents = 'auto';
+        }
+
+        if (cornerNotesBar) cornerNotesBar.style.opacity = '0.3';
+        if (captionTitle) captionTitle.classList.remove('hidden');
+
+        if (slider) {
+          slider.min = "1";
+          slider.max = "9";
+          slider.step = "1";
+          slider.value = 1;
+        }
+        if (sliderStartLabel) sliderStartLabel.textContent = "01";
+        if (sliderEndLabel) sliderEndLabel.textContent = "09 Finale";
+
+        currentPhase2Beat = 1;
+        applyPhase2Beat(1, shouldAutoPlay);
+
+        if (shouldAutoPlay) {
+          playChalkSound('draw');
+          emitChalkDust(canvas.width / 2, canvas.height / 2 - 20, 20, '#ffa15e');
+          startPlay();
+        } else {
+          stopPlay();
+        }
+      }
+    }
+
+    // =========================================================================
+    // AUDIO NARRATION PLAYER & FALLBACK CONTROLLER
+    // =========================================================================
+    function stopAudioOnly() {
+      allAudioTracks.forEach(a => {
+        if (a) {
+          a.pause();
+          a.currentTime = 0;
+          a.ontimeupdate = null;
+          a.onended = null;
+        }
+      });
+      activeAudioElement = null;
+      if (audioIndicator) {
+        audioIndicator.classList.add('hidden');
+        audioIndicator.classList.remove('flex');
+      }
+    }
+
+    function playNarrationForStep(stepNum, onComplete) {
+      stopAudioOnly();
+      const fallbackDurations = { 1: 30000, 2: 30000, 3: 30000, 3.5: 14000 };
+      const audioMap = { 1: audioStep1, 2: audioStep2, 3: audioStep3, 3.5: audioStep35 };
+      const targetAudio = audioMap[stepNum];
+
+      if (!voiceNarrationEnabled || !targetAudio) {
+        if (isPlaying && onComplete) {
+          stepTimer = setTimeout(onComplete, fallbackDurations[stepNum] || 6000);
+        }
+        return;
+      }
+
+      if (targetAudio) {
+        activeAudioElement = targetAudio;
+        targetAudio.volume = masterVolume;
+        targetAudio.currentTime = 0;
+        
+        if (audioIndicator) {
+          audioIndicator.classList.remove('hidden');
+          audioIndicator.classList.add('flex');
+        }
+
+        targetAudio.onended = () => {
+          if (audioIndicator) {
+            audioIndicator.classList.add('hidden');
+            audioIndicator.classList.remove('flex');
+          }
+          if (isPlaying && onComplete) {
+            stepTimer = setTimeout(onComplete, 900);
+          }
+        };
+
+        targetAudio.play().catch(e => {
+          console.warn('Narration playback fallback:', e);
+          if (isPlaying && onComplete) {
+            stepTimer = setTimeout(onComplete, fallbackDurations[stepNum] || 6000);
+          }
+        });
+      }
+    }
+
+    function playNarrationForPhase2Beat(beatNum, onComplete) {
+      stopAudioOnly();
+      const beatData = PHASE2_BEATS[beatNum];
+      const fallbackDuration = beatData ? beatData.duration : 16000;
+
+      if (!voiceNarrationEnabled) {
+        if (isPlaying && onComplete) {
+          stepTimer = setTimeout(onComplete, fallbackDuration);
+        }
+        return;
+      }
+
+      // Handle split clips and scene-specific audio synchronization post-reset
+      if (beatNum === 3) {
+        attachBeat3AudioSync(audioP2_3a);
+        playAudioSequence([audioP2_3a, audioP2_3b], fallbackDuration, onComplete, (trackIdx) => {
+          if (trackIdx === 1) {
+            runBeat3bCooperationSettle();
+            typewritePart2Append(PHASE2_BEATS[3].body3b, audioP2_3b, 11000);
+          }
+        });
+      } else if (beatNum === 4) {
+        attachBeat4AudioSync(audioP2_4a);
+        playAudioSequence([audioP2_4a, audioP2_4b], fallbackDuration, onComplete, (trackIdx) => {
+          if (trackIdx === 1) {
+            runBeat4bOutputFlow();
+            typewritePart2Append(PHASE2_BEATS[4].body4b, audioP2_4b, 8000);
+          }
+        });
+      } else if (beatNum === 7) {
+        attachBeat7AudioSync(audioP2_7);
+        playAudioSequence([audioP2_7], fallbackDuration, onComplete);
+      } else {
+        const audioMap = {
+          1: audioP2_1, 2: audioP2_2, 5: audioP2_5,
+          6: audioP2_6, 8: audioP2_8, 9: audioP2_9
+        };
+        const targetAudio = audioMap[beatNum];
+        if (!targetAudio) {
+          if (isPlaying && onComplete) {
+            stepTimer = setTimeout(onComplete, fallbackDuration);
+          }
+          return;
+        }
+        playAudioSequence([targetAudio], fallbackDuration, onComplete);
+      }
+    }
+
+    function playAudioSequence(tracks, fallbackDuration, onComplete, onTrackStart) {
+      const validTracks = tracks.filter(t => !!t);
+      if (validTracks.length === 0) {
+        if (isPlaying && onComplete) {
+          stepTimer = setTimeout(onComplete, fallbackDuration);
+        }
+        return;
+      }
+
+      let currentIndex = 0;
+
+      function playNextTrack() {
+        if (currentIndex < validTracks.length) {
+          const track = validTracks[currentIndex];
+          activeAudioElement = track;
+          track.volume = masterVolume;
+          track.currentTime = 0;
+
+          if (audioIndicator) {
+            audioIndicator.classList.remove('hidden');
+            audioIndicator.classList.add('flex');
+          }
+
+          if (onTrackStart) onTrackStart(currentIndex);
+
+          track.onended = () => {
+            currentIndex++;
+            if (currentIndex < validTracks.length) {
+              stepTimer = setTimeout(playNextTrack, 350);
+            } else {
+              if (audioIndicator) {
+                audioIndicator.classList.add('hidden');
+                audioIndicator.classList.remove('flex');
+              }
+              if (isPlaying && onComplete) {
+                stepTimer = setTimeout(onComplete, 850);
+              }
+            }
+          };
+
+          track.play().catch(e => {
+            console.warn('Audio track playback fallback:', e);
+            currentIndex++;
+            if (currentIndex < validTracks.length) {
+              playNextTrack();
+            } else if (isPlaying && onComplete) {
+              stepTimer = setTimeout(onComplete, fallbackDuration);
+            }
+          });
+        }
+      }
+
+      playNextTrack();
+    }
+
+    function toggleVoiceNarration() {
+      voiceNarrationEnabled = !voiceNarrationEnabled;
+      const voiceBtn = document.getElementById('voice-btn');
+      const voiceLabel = document.getElementById('voice-label');
+      
+      if (voiceNarrationEnabled) {
+        if (voiceBtn) {
+          voiceBtn.classList.add('bg-[#ff781f]/15', 'border-[#ff781f]/50', 'text-[#ffa15e]');
+          voiceBtn.classList.remove('bg-white/5', 'border-white/10', 'text-[#94a3b8]');
+        }
+        if (voiceLabel) voiceLabel.textContent = 'Voice Narration';
+        
+        if (isPlaying) {
+          if (currentPhase === 1) {
+            const activeStageNum = currentStage >= 3.25 ? 3.5 : Math.round(currentStage);
+            playNarrationForStep(activeStageNum, getNextStepCallback(activeStageNum));
+          } else {
+            playNarrationForPhase2Beat(currentPhase2Beat, getPhase2NextCallback(currentPhase2Beat));
+          }
+        }
+      } else {
+        if (voiceBtn) {
+          voiceBtn.classList.remove('bg-[#ff781f]/15', 'border-[#ff781f]/50', 'text-[#ffa15e]');
+          voiceBtn.classList.add('bg-white/5', 'border-white/10', 'text-[#94a3b8]');
+        }
+        if (voiceLabel) voiceLabel.textContent = 'Narration: OFF';
+        stopAudioOnly();
+
+        // If currently playing in auto-play mode, continue advancing via calibrated fallback timer
+        if (isPlaying) {
+          if (stepTimer) clearTimeout(stepTimer);
+          if (currentPhase === 1) {
+            const activeStageNum = currentStage >= 3.25 ? 3.5 : Math.round(currentStage);
+            const fallbackDurations = { 1: 14000, 2: 15000, 3: 16000, 3.5: 12000 };
+            stepTimer = setTimeout(getNextStepCallback(activeStageNum), fallbackDurations[activeStageNum] || 12000);
+          } else {
+            const beatData = PHASE2_BEATS[currentPhase2Beat];
+            const fallbackDuration = beatData ? beatData.duration : 16000;
+            stepTimer = setTimeout(getPhase2NextCallback(currentPhase2Beat), fallbackDuration);
+          }
+        }
+      }
+    }
+
+    // =========================================================================
+    // WEB AUDIO CHALK SYNTHESIZER & PARTICLES
+    // =========================================================================
+    function initAudio() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+    }
+
+    function playChalkSound(type = 'draw') {
+      if (!audioFxEnabled) return;
+      try {
+        initAudio();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        
+        const now = audioCtx.currentTime;
+        const duration = type === 'snap' ? 0.1 : 0.18;
+        const bufferSize = Math.floor(audioCtx.sampleRate * duration);
+        const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          data[i] = Math.random() * 2 - 1;
+        }
+
+        const noise = audioCtx.createBufferSource();
+        noise.buffer = buffer;
+
+        const filter = audioCtx.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.setValueAtTime(type === 'snap' ? 2600 : 1900, now);
+        filter.Q.setValueAtTime(4.0, now);
+
+        const gain = audioCtx.createGain();
+        gain.gain.setValueAtTime(0.12 * masterVolume, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+        noise.connect(filter);
+        filter.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        noise.start(now);
+      } catch (e) {
+        console.warn('Audio FX error', e);
+      }
+    }
+
+    function toggleAudio() {
+      audioFxEnabled = !audioFxEnabled;
+      const soundBtn = document.getElementById('sound-btn');
+      const soundIcon = document.getElementById('sound-icon');
+      if (audioFxEnabled) {
+        initAudio();
+        soundIcon.textContent = '🔊';
+        soundBtn.classList.add('text-[#ff781f]', 'border-[#ff781f]/40');
+        playChalkSound('snap');
+      } else {
+        soundIcon.textContent = '🔇';
+        soundBtn.classList.remove('text-[#ff781f]', 'border-[#ff781f]/40');
+      }
+    }
+
+    const canvas = document.getElementById('particle-canvas');
+    const ctx = canvas.getContext('2d');
+    let particles = [];
+
+    function resizeCanvas() {
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = rect.width;
+      canvas.height = rect.height;
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    class ChalkParticle {
+      constructor(x, y, color = '#ff781f') {
+        this.x = x;
+        this.y = y;
+        this.vx = (Math.random() - 0.5) * 4.5;
+        this.vy = (Math.random() - 0.5) * 4.5 - 1.8;
+        this.size = Math.random() * 2.2 + 1;
+        this.alpha = Math.random() * 0.7 + 0.3;
+        this.color = color;
+        this.decay = Math.random() * 0.02 + 0.015;
+      }
+      update() {
+        this.x += this.vx;
+        this.y += this.vy;
+        this.vy += 0.06;
+        this.alpha -= this.decay;
+      }
+      draw(c) {
+        c.save();
+        c.globalAlpha = Math.max(0, this.alpha);
+        c.fillStyle = this.color;
+        c.beginPath();
+        c.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        c.fill();
+        c.restore();
+      }
+    }
+
+    function emitChalkDust(x, y, count = 20, color = '#ffffff') {
+      for (let i = 0; i < count; i++) {
+        particles.push(new ChalkParticle(x, y, color));
+      }
+    }
+
+    function triggerGlyphDust(element, color) {
+      if (!element) return;
+      const rect = element.getBoundingClientRect();
+      const canvasRect = canvas.getBoundingClientRect();
+      const x = rect.left + rect.width / 2 - canvasRect.left;
+      const y = rect.top + rect.height / 2 - canvasRect.top;
+      emitChalkDust(x, y, 25, color);
+    }
+
+    function triggerNodeDust(element) {
+      if (!element) return;
+      playChalkSound('snap');
+      triggerGlyphDust(element, '#ffa15e');
+      triggerGlyphDust(element, '#ffffff');
+    }
+
+    function animateParticles() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.update();
+        p.draw(ctx);
+        if (p.alpha <= 0) particles.splice(i, 1);
+      }
+      requestAnimationFrame(animateParticles);
+    }
+    animateParticles();
+
+    // =========================================================================
+    // TYPEWRITER ENGINE (Sans-Serif, Natural Pacing)
+    // =========================================================================
+    function parseHtmlToTokens(html) {
+      const tokens = [];
+      let i = 0;
+      while (i < html.length) {
+        if (html[i] === '<') {
+          const end = html.indexOf('>', i);
+          if (end !== -1) {
+            tokens.push({ isTag: true, text: html.substring(i, end + 1) });
+            i = end + 1;
+            continue;
+          }
+        } else if (html[i] === '&') {
+          const end = html.indexOf(';', i);
+          if (end !== -1 && end - i < 10) {
+            tokens.push({ isTag: true, text: html.substring(i, end + 1) });
+            i = end + 1;
+            continue;
+          }
+        }
+        tokens.push({ isTag: false, text: html[i] });
+        i++;
+      }
+      return tokens;
+    }
+
+    function getPacedTypingDelay(textLength, audioEl, fallbackMs = 15000, targetRatio = 0.70, minDelay = 48, maxDelay = 80) {
+      let durationMs = fallbackMs;
+      if (audioEl && audioEl.duration && !isNaN(audioEl.duration) && audioEl.duration > 2) {
+        durationMs = audioEl.duration * 1000;
+      }
+      if (!textLength || textLength <= 0) return 55;
+      const targetTypingMs = durationMs * targetRatio;
+      const calculatedDelay = targetTypingMs / textLength;
+      return Math.max(minDelay, Math.min(maxDelay, calculatedDelay));
+    }
+
+    function typewriteStepText(stepKey, shouldAnimate = true, isPhase2 = false) {
+      if (typewriterTimer) {
+        clearTimeout(typewriterTimer);
+        typewriterTimer = null;
+      }
+
+      if (!captionBody) return;
+
+      if (!isPhase2) {
+        const data = PHASE1_CONTENT[stepKey];
+        if (!data) return;
+
+        if (captionTitle) {
+          captionTitle.classList.remove('hidden');
+          captionTitle.textContent = data.title;
+          captionTitle.style.color = data.titleColor;
+          captionTitle.style.textShadow = data.titleGlow;
+        }
+
+        captionBody.className = "text-base sm:text-lg md:text-xl font-sans leading-relaxed text-[#f1f5f9] font-medium min-h-[48px] text-center";
+        captionBody.style.color = '#f1f5f9';
+        captionBody.style.textShadow = 'none';
+
+        if (!shouldAnimate) {
+          captionBody.innerHTML = data.body;
+          return;
+        }
+
+        const tokens = parseHtmlToTokens(data.body);
+        const nonTagCount = tokens.filter(t => !t.isTag).length;
+        const audioMap = { 1: audioStep1, 2: audioStep2, 3: audioStep3, 3.5: audioStep35 };
+        const fallbackDurations = { 1: 30000, 2: 30000, 3: 30000, 3.5: 14000 };
+        const baseCharDelay = getPacedTypingDelay(nonTagCount, audioMap[stepKey], fallbackDurations[stepKey] || 30000, 0.65, 58, 85);
+
+        let tokenIndex = 0;
+        let accumulatedHtml = '';
+
+        function typeNextToken() {
+          while (tokenIndex < tokens.length && tokens[tokenIndex].isTag) {
+            accumulatedHtml += tokens[tokenIndex].text;
+            tokenIndex++;
+          }
+
+          if (tokenIndex < tokens.length) {
+            const char = tokens[tokenIndex].text;
+            accumulatedHtml += char;
+            tokenIndex++;
+
+            captionBody.innerHTML = accumulatedHtml + '<span class="chalk-cursor">|</span>';
+
+            let delay = baseCharDelay + (Math.random() * 8 - 4);
+            if (char === '.' || char === '!' || char === '?') delay += 240;
+            else if (char === ',' || char === ':' || char === '—' || char === ';') delay += 110;
+
+            typewriterTimer = setTimeout(typeNextToken, delay);
+          } else {
+            captionBody.innerHTML = data.body;
+            typewriterTimer = null;
+          }
+        }
+
+        typewriterTimer = setTimeout(typeNextToken, 120);
+      } else {
+        const data = PHASE2_BEATS[stepKey];
+        if (!data) return;
+
+        if (captionTitle) {
+          captionTitle.classList.remove('hidden');
+          captionTitle.className = "text-base sm:text-lg md:text-xl font-bold font-sans tracking-tight text-[#ffa15e] drop-shadow-[0_0_14px_rgba(255,120,31,0.85)] mb-1.5 transition-colors duration-300";
+        }
+
+        captionBody.className = "text-sm sm:text-base md:text-lg font-sans leading-relaxed text-[#f1f5f9] font-medium min-h-[48px] text-center";
+        captionBody.style.color = '#f1f5f9';
+        captionBody.style.textShadow = 'none';
+
+        const fullHeader = data.header;
+        const fullBody = data.body;
+        const initialBody = (stepKey === 3 ? data.body3a : (stepKey === 4 ? data.body4a : data.body));
+
+        if (!shouldAnimate) {
+          if (captionTitle) captionTitle.textContent = fullHeader;
+          captionBody.innerHTML = fullBody;
+          return;
+        }
+
+        const audioMap = {
+          1: audioP2_1, 2: audioP2_2, 3: audioP2_3a, 4: audioP2_4a,
+          5: audioP2_5, 6: audioP2_6, 7: audioP2_7, 8: audioP2_8, 9: audioP2_9
+        };
+        const fallbackAudioDurations = {
+          1: 16000, 2: 16000, 3: 7500, 4: 8000,
+          5: 17000, 6: 16000, 7: 16000, 8: 17000, 9: 18000
+        };
+
+        const targetAudio = audioMap[stepKey];
+        const fallbackMs = fallbackAudioDurations[stepKey] || 16000;
+        const baseBodyDelay = getPacedTypingDelay(initialBody.length, targetAudio, fallbackMs, 0.70, 52, 78);
+        const baseHeaderDelay = 48;
+
+        let headerIdx = 0;
+        let bodyIdx = 0;
+        let typingBody = false;
+
+        if (captionTitle) captionTitle.innerHTML = '<span class="chalk-cursor text-[#ffa15e]">|</span>';
+        captionBody.innerHTML = '';
+
+        function typeNextPart2Char() {
+          if (!typingBody) {
+            if (headerIdx < fullHeader.length) {
+              headerIdx++;
+              const currentHeader = fullHeader.substring(0, headerIdx);
+              if (captionTitle) captionTitle.innerHTML = currentHeader + '<span class="chalk-cursor text-[#ffa15e]">|</span>';
+
+              const char = fullHeader[headerIdx - 1];
+              let delay = baseHeaderDelay + (Math.random() * 6 - 3);
+              if (char === '.' || char === '!' || char === '?') delay += 220;
+              else if (char === ',' || char === '—' || char === ':') delay += 100;
+
+              typewriterTimer = setTimeout(typeNextPart2Char, delay);
+            } else {
+              if (captionTitle) captionTitle.innerHTML = fullHeader;
+              typingBody = true;
+              typewriterTimer = setTimeout(typeNextPart2Char, 260);
+            }
+          } else {
+            if (bodyIdx < initialBody.length) {
+              bodyIdx++;
+              const currentBody = initialBody.substring(0, bodyIdx);
+              captionBody.innerHTML = currentBody + '<span class="chalk-cursor">|</span>';
+
+              const char = initialBody[bodyIdx - 1];
+              let delay = baseBodyDelay + (Math.random() * 6 - 3);
+              if (char === '.' || char === '!' || char === '?') {
+                delay += (stepKey === 4 || stepKey === 3 ? 280 : 220);
+              } else if (char === ',' || char === '—' || char === ';') {
+                delay += (stepKey === 4 || stepKey === 3 ? 120 : 100);
+              }
+
+              typewriterTimer = setTimeout(typeNextPart2Char, delay);
+            } else {
+              captionBody.innerHTML = initialBody;
+              typewriterTimer = null;
+
+              // If voice is disabled, auto-append part B for beats 3 and 4
+              if (!voiceNarrationEnabled) {
+                if (stepKey === 3 && data.body3b) {
+                  typewriterTimer = setTimeout(() => typewritePart2Append(data.body3b, audioP2_3b, 11000), 350);
+                } else if (stepKey === 4 && data.body4b) {
+                  typewriterTimer = setTimeout(() => typewritePart2Append(data.body4b, audioP2_4b, 8000), 350);
+                }
+              }
+            }
+          }
+        }
+
+        typewriterTimer = setTimeout(typeNextPart2Char, 80);
+      }
+    }
+
+    function typewritePart2Append(appendContent, targetAudio = null, fallbackMs = 10000) {
+      if (!captionBody || !appendContent) return;
+
+      const currentText = captionBody.innerHTML.replace(/<span class="chalk-cursor.*?<\/span>/g, '').trim();
+      const textToAppend = (currentText ? ' ' : '') + appendContent;
+      let appendIdx = 0;
+      const baseDelay = getPacedTypingDelay(textToAppend.length, targetAudio, fallbackMs, 0.74, 52, 80);
+
+      function typeNextAppendChar() {
+        if (appendIdx < textToAppend.length) {
+          appendIdx++;
+          const appendedChunk = textToAppend.substring(0, appendIdx);
+          captionBody.innerHTML = currentText + appendedChunk + '<span class="chalk-cursor">|</span>';
+
+          const char = textToAppend[appendIdx - 1];
+          let delay = baseDelay + (Math.random() * 6 - 3);
+          if (char === '.' || char === '!' || char === '?') delay += 320;
+          else if (char === ',' || char === '—' || char === ';') delay += 120;
+
+          typewriterTimer = setTimeout(typeNextAppendChar, delay);
+        } else {
+          captionBody.innerHTML = currentText + textToAppend;
+          typewriterTimer = null;
+        }
+      }
+
+      typewriterTimer = setTimeout(typeNextAppendChar, 120);
+    }
+
+    // =========================================================================
+    // PART I STAGE RENDERER (The Harness)
+    // =========================================================================
+    function applyStage(stage, triggerTypewriter = false) {
+      currentStage = stage;
+      if (slider && currentPhase === 1) slider.value = stage;
+
+      let roundedStage = 1;
+      if (stage < 1.5) roundedStage = 1;
+      else if (stage < 2.5) roundedStage = 2;
+      else if (stage < 3.25) roundedStage = 3;
+      else roundedStage = 3.5;
+
+      const stageKeys = [1, 2, 3, 3.5];
+      stageKeys.forEach(k => {
+        const keyStr = k === 3.5 ? '3-5' : k;
+        const btn = document.getElementById(`stage-btn-${keyStr}`);
+        if (btn) {
+          if (roundedStage === k) {
+            btn.classList.add('active', 'text-white');
+            btn.classList.remove('text-[#94a3b8]');
+          } else {
+            btn.classList.remove('active', 'text-white');
+            btn.classList.add('text-[#94a3b8]');
+          }
+        }
+      });
+
+      applyBannerLayout(stage);
+      applyLightingChoreography(stage);
+
+      if (roundedStage !== currentDisplayedStep || triggerTypewriter) {
+        currentDisplayedStep = roundedStage;
+        typewriteStepText(roundedStage, triggerTypewriter, false);
+      }
+    }
+
+    function applyLightingChoreography(stage) {
+      let achGlow = 0;
+      let riGlow = 0;
+
+      if (stage <= 1.0) {
+        achGlow = 1.0; riGlow = 0.0;
+      } else if (stage < 2.0) {
+        const t = (stage - 1.0);
+        achGlow = 1.0 - t; riGlow = t;
+      } else if (stage === 2.0) {
+        achGlow = 0.0; riGlow = 1.0;
+      } else if (stage < 3.0) {
+        const t = (stage - 2.0);
+        achGlow = t; riGlow = 1.0;
+      } else {
+        const t = Math.min(1.0, (stage - 3.0) / 0.5);
+        achGlow = 1.0 - t; riGlow = 1.0 - t;
+      }
+
+      const achOpacity = 0.25 + achGlow * 0.75;
+      const achShadowSpread = achGlow * 40;
+      const achBlur = achGlow > 0.5 ? `drop-shadow(0 0 ${achGlow * 12}px rgba(255,255,255,0.85))` : 'none';
+      const achTextShadow = achGlow > 0.1 
+        ? `0 0 2px #ffffff, 0 0 ${10 * achGlow}px rgba(255,255,255,0.9), 0 0 ${achShadowSpread}px rgba(255,255,255,0.5)`
+        : '0 1px 2px rgba(0,0,0,0.8)';
+
+      if (charA) { charA.style.opacity = achOpacity; charA.style.textShadow = achTextShadow; charA.style.filter = achBlur; }
+      if (charCH) { charCH.style.opacity = achOpacity; charCH.style.textShadow = achTextShadow; charCH.style.filter = achBlur; }
+
+      const riOpacity = 0.25 + riGlow * 0.75;
+      const riShadowSpread = riGlow * 50;
+      const riBlur = riGlow > 0.4 ? `drop-shadow(0 0 ${riGlow * 16}px rgba(255,120,31,0.9))` : 'none';
+      const riTextShadow = riGlow > 0.1
+        ? `0 0 2px #ffa15e, 0 0 ${14 * riGlow}px rgba(255,120,31,1), 0 0 ${riShadowSpread}px rgba(255,120,31,0.75)`
+        : '0 1px 2px rgba(0,0,0,0.8)';
+
+      if (charR) { charR.style.opacity = riOpacity; charR.style.textShadow = riTextShadow; charR.style.filter = riBlur; }
+      if (charI) { charI.style.opacity = riOpacity; charI.style.textShadow = riTextShadow; charI.style.filter = riBlur; }
+
+      if (stage < 1.5) {
+        cornerLeftNote.textContent = '// 01. THE COMPUTER HARNESS';
+        cornerRightNote.innerHTML = `<span class="text-white font-bold font-mono-code">[A &middot; C &middot; H &mdash; THE HARNESS]</span>`;
+        formulaPill.innerHTML = `<span class="text-white font-black drop-shadow-[0_0_8px_#fff]">A</span> &middot; <span class="text-[#ff781f]/40 font-bold">r</span> &middot; <span class="text-white font-black drop-shadow-[0_0_8px_#fff]">C</span> &middot; <span class="text-white font-black drop-shadow-[0_0_8px_#fff]">H</span> &middot; <span class="text-[#ff781f]/40 font-bold">i</span> <span class="text-white/70 ml-2">[A &middot; C &middot; H &mdash; THE HARNESS]</span>`;
+      } else if (stage < 2.5) {
+        cornerLeftNote.textContent = '// 02. RESTORATIVE INTELLIGENCE';
+        cornerRightNote.innerHTML = `<span class="text-[#ff781f] font-bold font-mono-code">[r &middot; i &mdash; INTENT INTO ACTION]</span>`;
+        formulaPill.innerHTML = `<span class="text-white/40 font-bold">A</span><sup class="text-[#ff781f] font-black drop-shadow-[0_0_12px_#ff781f]">r</sup> &middot; <span class="text-white/40 font-bold">CH</span><sup class="text-[#ff781f] font-black drop-shadow-[0_0_12px_#ff781f]">i</sup> <span class="text-[#ffa15e] ml-2">[r &middot; i &mdash; INTENT INTO ACTION]</span>`;
+      } else if (stage < 3.25) {
+        cornerLeftNote.textContent = '// 03. THE COMPLETE SYSTEM';
+        cornerRightNote.innerHTML = `<span class="text-[#ff9d54] font-bold font-mono-code">[ArCHi &mdash; ONE ACCESSIBILITY CONTROLLER]</span>`;
+        formulaPill.innerHTML = `<span class="text-white font-black tracking-wider drop-shadow-[0_0_8px_#fff]">A<span class="text-[#ff781f] drop-shadow-[0_0_12px_#ff781f]">r</span>CH<span class="text-[#ff781f] drop-shadow-[0_0_12px_#ff781f]">i</span></span> <span class="text-[#ffa15e] ml-2">[ArCHi &mdash; ONE ACCESSIBILITY CONTROLLER]</span>`;
+      } else {
+        cornerLeftNote.textContent = '// SEGUE. BEYOND THE HARNESS';
+        cornerRightNote.innerHTML = `<span class="text-[#ffa15e] font-bold font-mono-code">[OPEN SOURCE &middot; OPEN MINDS]</span>`;
+        formulaPill.innerHTML = `<span class="text-white font-bold font-mono-code">A<span class="text-[#ff781f]">r</span>CH<span class="text-[#ff781f]">i</span></span> <span class="text-[#ff781f] mx-2">&rarr;</span> <span class="text-[#ffa15e] font-semibold">Where Open Source Integrates with Open Minds</span>`;
+      }
+    }
+
+    function applyBannerLayout(stage) {
+      if (!wordmarkContainer) return;
+      const openMindContainer = document.getElementById('open-mind-container');
+      const chalkUnderlineBox = document.getElementById('chalk-underline-box');
+      const acronymLegend = document.getElementById('acronym-legend');
+
+      if (stage <= 3.0) {
+        if (openMindContainer) {
+          openMindContainer.style.opacity = '0';
+          openMindContainer.style.transform = 'scale(0.88)';
+          openMindContainer.style.pointerEvents = 'none';
+        }
+        wordmarkContainer.style.opacity = '1';
+        wordmarkContainer.style.transform = 'scale(1) translateY(0px)';
+        if (chalkUnderlineBox) chalkUnderlineBox.style.opacity = '1';
+        if (acronymLegend) acronymLegend.style.opacity = '1';
+
+        if (stage < 2.0) {
+          const t = (stage - 1.0);
+          charA.style.transform = `scale(1)`;
+          charCH.style.transform = `translateX(${t * -4}px)`;
+          charR.style.transform = `translate(${-t * 8}px, ${-t * 42}px) scale(${1 - t * 0.44})`;
+          charI.style.transform = `translate(${-t * 6}px, ${-t * 42}px) scale(${1 - t * 0.44})`;
+          mathDot.style.opacity = `${t}`;
+          mathDot.style.transform = `scale(${t})`;
+          centerTag.style.opacity = '0';
+        } else {
+          const t = (stage - 2.0);
+          charA.style.transform = `scale(1)`;
+          charCH.style.transform = `translateX(${-4 + t * 4}px)`;
+          charR.style.transform = `translate(${-8 + t * 4}px, ${-42 + t * 42}px) scale(${0.56 + t * 0.34})`;
+          charI.style.transform = `translate(${-6 + t * 4}px, ${-42 + t * 42}px) scale(${0.56 + t * 0.34})`;
+          mathDot.style.opacity = `${1 - t}`;
+          mathDot.style.transform = `scale(${1 - t})`;
+          centerTag.style.opacity = `${t}`;
+        }
+      } else {
+        const t = Math.min(1.0, (stage - 3.0) / 0.5);
+        wordmarkContainer.style.opacity = `${Math.max(0, 1 - t * 1.25)}`;
+        if (chalkUnderlineBox) chalkUnderlineBox.style.opacity = `${Math.max(0, 1 - t * 1.5)}`;
+        if (acronymLegend) acronymLegend.style.opacity = `${Math.max(0, 1 - t * 1.5)}`;
+
+        if (openMindContainer) {
+          openMindContainer.style.opacity = `${t}`;
+          openMindContainer.style.transform = `scale(${0.88 + t * 0.12})`;
+          openMindContainer.style.pointerEvents = t > 0.8 ? 'auto' : 'none';
+        }
+      }
+    }
+
+    // =========================================================================
+    // PART II FILMSTRIP BEAT RENDERER (The Story)
+    // =========================================================================
+    function applyPhase2Beat(beatNum, triggerTypewriter = true) {
+      currentPhase2Beat = beatNum;
+      if (slider && currentPhase === 2) slider.value = beatNum;
+
+      const beatData = PHASE2_BEATS[beatNum];
+      if (!beatData) return;
+
+      // Update Part II minimal progress tracker
+      if (p2StoryBeatTitle) p2StoryBeatTitle.textContent = beatData.shortTitle;
+      if (p2StoryBeatCounter) p2StoryBeatCounter.textContent = `Part II · Story ${beatNum} of 9`;
+
+      for (let i = 1; i <= 9; i++) {
+        const dot = document.getElementById(`p2-dot-${i}`);
+        if (dot) {
+          if (i === beatNum) {
+            dot.classList.add('bg-[#ff781f]', 'shadow-[0_0_12px_#ff781f]');
+            dot.classList.remove('bg-white/15');
+          } else {
+            dot.classList.remove('bg-[#ff781f]', 'shadow-[0_0_12px_#ff781f]');
+            dot.classList.add('bg-white/15');
+          }
+        }
+      }
+
+      // Switch visual sub-views
+      for (let i = 1; i <= 9; i++) {
+        const view = document.getElementById(`p2-scene-${i}`);
+        if (view) {
+          if (i === beatNum) {
+            view.classList.remove('hidden');
+            view.classList.add('flex');
+          } else {
+            view.classList.add('hidden');
+            view.classList.remove('flex');
+          }
+        }
+      }
+
+      // Live Choreographies
+      if (beatNum === 3) {
+        runBeat3LiveRealDemo();
+      } else if (beatNum === 4) {
+        runBeat4IntentChoreography();
+      } else if (beatNum === 7) {
+        runBeat7MeaningSequence();
+      }
+
+      typewriteStepText(beatNum, triggerTypewriter, true);
+    }
+
+    // Beat 03: Real Desktop Magnifier Live Demonstration Synchronized to Narration
+    let beat3DemoStage = 0;
+
+    function setDesktopMagnifierFocus(targetNode, zoomScale = 1.45) {
+      const cluster = document.getElementById('p2-demo-nodes-cluster');
+      if (!cluster || !targetNode) return;
+
+      cluster.style.transition = 'transform 1200ms cubic-bezier(0.25, 1, 0.35, 1)';
+
+      // Calculate unscaled offset of target relative to cluster center
+      const targetCenterX = targetNode.offsetLeft + targetNode.offsetWidth / 2;
+      const targetCenterY = targetNode.offsetTop + targetNode.offsetHeight / 2;
+      const clusterCenterX = cluster.offsetWidth / 2;
+      const clusterCenterY = cluster.offsetHeight / 2;
+
+      const offsetX = targetCenterX - clusterCenterX;
+      const offsetY = targetCenterY - clusterCenterY;
+
+      const tx = -offsetX * zoomScale;
+      const ty = -offsetY * zoomScale;
+
+      cluster.style.transform = `translate(${tx.toFixed(1)}px, ${ty.toFixed(1)}px) scale(${zoomScale})`;
+    }
+
+    function setDesktopMagnifierOverview(zoomScale = 1.0) {
+      const cluster = document.getElementById('p2-demo-nodes-cluster');
+      if (!cluster) return;
+      cluster.style.transition = 'transform 1200ms cubic-bezier(0.25, 1, 0.35, 1)';
+      cluster.style.transform = `translate(0px, 0px) scale(${zoomScale})`;
+    }
+
+    function triggerBeat3Stage1() {
+      if (beat3DemoStage >= 1) return;
+      beat3DemoStage = 1;
+      const magIndicator = document.getElementById('p2-mag-indicator');
+      const nodeMag = document.getElementById('p2-node-mag');
+      if (magIndicator) {
+        magIndicator.textContent = 'MAG 2×';
+        magIndicator.style.opacity = '1';
+      }
+      if (nodeMag) {
+        nodeMag.className = "chalk-node-pill px-4 py-2 rounded-xl text-xs sm:text-sm font-bold text-[#ffa15e] border-2 border-[#ff781f] bg-[#ff781f]/20 shadow-[0_0_20px_rgba(255,120,31,0.4)] transition-all duration-500 flex items-center gap-2";
+        setDesktopMagnifierFocus(nodeMag, 1.45);
+      }
+    }
+
+    function triggerBeat3Stage2() {
+      if (beat3DemoStage >= 2) return;
+      beat3DemoStage = 2;
+      const magIndicator = document.getElementById('p2-mag-indicator');
+      const nodeMag = document.getElementById('p2-node-mag');
+      if (magIndicator) {
+        magIndicator.textContent = 'MAG 3×';
+      }
+      if (nodeMag) {
+        setDesktopMagnifierFocus(nodeMag, 1.90);
+      }
+      playChalkSound('snap');
+    }
+
+    function triggerBeat3Stage3() {
+      if (beat3DemoStage >= 3) return;
+      beat3DemoStage = 3;
+      const nodeSpeech = document.getElementById('p2-node-speech');
+      if (nodeSpeech) {
+        nodeSpeech.className = "chalk-node-pill px-4 py-2 rounded-xl text-xs sm:text-sm font-bold text-[#ffa15e] border-2 border-[#ff781f] bg-[#ff781f]/20 shadow-[0_0_20px_rgba(255,120,31,0.4)] transition-all duration-500 flex items-center gap-2";
+      }
+    }
+
+    function triggerBeat3Stage4() {
+      if (beat3DemoStage >= 4) return;
+      beat3DemoStage = 4;
+      const nodeMag = document.getElementById('p2-node-mag');
+      const nodeSpeech = document.getElementById('p2-node-speech');
+      if (nodeMag) {
+        nodeMag.className = "chalk-node-pill px-4 py-2 rounded-xl text-xs sm:text-sm font-bold text-white border border-[#ff781f]/50 bg-[#ff781f]/10 transition-all duration-500 flex items-center gap-2";
+      }
+      if (nodeSpeech) {
+        setDesktopMagnifierFocus(nodeSpeech, 1.90);
+      }
+    }
+
+    function attachBeat3AudioSync(audioEl) {
+      if (!audioEl) return;
+      audioEl.ontimeupdate = () => {
+        const t = audioEl.currentTime;
+        if (t >= 0.1) triggerBeat3Stage1();
+        if (t >= 2.4) triggerBeat3Stage2();
+        if (t >= 4.8) triggerBeat3Stage3();
+        if (t >= 6.8) triggerBeat3Stage4();
+      };
+    }
+
+    function runBeat3LiveRealDemo() {
+      if (sceneDemoTimer) { clearTimeout(sceneDemoTimer); sceneDemoTimer = null; }
+      beat3DemoStage = 0;
+
+      const cluster = document.getElementById('p2-demo-nodes-cluster');
+      const magIndicator = document.getElementById('p2-mag-indicator');
+      const nodeMag = document.getElementById('p2-node-mag');
+      const nodeSpeech = document.getElementById('p2-node-speech');
+      const nodeDict = document.getElementById('p2-node-dict');
+      const nodeWin = document.getElementById('p2-node-win');
+      const nodeKb = document.getElementById('p2-node-kb');
+
+      if (!cluster || !nodeMag || !nodeSpeech) return;
+
+      // Reset node styles to neutral initial state
+      [nodeMag, nodeSpeech, nodeDict, nodeWin, nodeKb].forEach(n => {
+        if (n) n.className = "chalk-node-pill px-4 py-2 rounded-xl text-xs sm:text-sm font-bold text-white transition-all duration-500 flex items-center gap-2";
+      });
+      if (magIndicator) {
+        magIndicator.style.opacity = '0';
+        magIndicator.textContent = 'MAG 2×';
+      }
+      setDesktopMagnifierOverview(1.0);
+
+      // Trigger Stage 1 immediately on frame 0
+      requestAnimationFrame(() => {
+        triggerBeat3Stage1();
+      });
+
+      // Fallback progression timers if narration is muted
+      if (!voiceNarrationEnabled) {
+        sceneDemoTimer = setTimeout(() => {
+          triggerBeat3Stage2();
+          sceneDemoTimer = setTimeout(() => {
+            triggerBeat3Stage3();
+            sceneDemoTimer = setTimeout(() => {
+              triggerBeat3Stage4();
+            }, 1800);
+          }, 2400);
+        }, 2500);
+      }
+    }
+
+    // 3b: “Nothing exotic happened there…” -> Ease back out to show surrounding capabilities, leaving both illuminated
+    function runBeat3bCooperationSettle() {
+      const magIndicator = document.getElementById('p2-mag-indicator');
+      const nodeMag = document.getElementById('p2-node-mag');
+      const nodeSpeech = document.getElementById('p2-node-speech');
+
+      if (magIndicator) {
+        magIndicator.style.opacity = '0';
+      }
+      setDesktopMagnifierOverview(1.0);
+
+      if (nodeMag) {
+        nodeMag.className = "chalk-node-pill px-4 py-2 rounded-xl text-xs sm:text-sm font-bold text-[#ffa15e] border-2 border-[#ff781f] bg-[#ff781f]/20 shadow-[0_0_20px_rgba(255,120,31,0.4)] transition-all duration-700 flex items-center gap-2";
+      }
+      if (nodeSpeech) {
+        nodeSpeech.className = "chalk-node-pill px-4 py-2 rounded-xl text-xs sm:text-sm font-bold text-[#ffa15e] border-2 border-[#ff781f] bg-[#ff781f]/20 shadow-[0_0_20px_rgba(255,120,31,0.4)] transition-all duration-700 flex items-center gap-2";
+      }
+      emitChalkDust(canvas.width / 2, canvas.height / 2 - 20, 15, '#ffa15e');
+    }
+
+    // Beat 04: Intent Pipeline Synchronized to Spoken Narration
+    let beat4IntentStage = 0;
+
+    function triggerBeat4Stage(stage) {
+      if (beat4IntentStage >= stage) return;
+      beat4IntentStage = stage;
+
+      const inputVoice = document.getElementById('p2-input-voice');
+      const inputKeyboard = document.getElementById('p2-input-keyboard');
+      const inputMouse = document.getElementById('p2-input-mouse');
+      const inputJoystick = document.getElementById('p2-input-joystick');
+      const inputSwitch = document.getElementById('p2-input-switch');
+      const intentCore = document.getElementById('p2-intent-core');
+
+      function highlightInput(el) {
+        if (!el) return;
+        el.className = "bg-[#ff781f]/25 border border-[#ff781f] px-2.5 py-0.5 rounded text-[#ffa15e] font-bold shadow-[0_0_12px_rgba(255,120,31,0.5)] transition-all duration-300 scale-105";
+        emitChalkDust(canvas.width / 2 - 120, canvas.height / 2 - 20, 10, '#ffa15e');
+      }
+
+      if (stage === 1) highlightInput(inputVoice);
+      else if (stage === 2) highlightInput(inputKeyboard);
+      else if (stage === 3) highlightInput(inputMouse);
+      else if (stage === 4) highlightInput(inputJoystick);
+      else if (stage === 5) highlightInput(inputSwitch);
+      else if (stage === 6) {
+        // "They are ways of expressing it" -> All inputs converge into core
+        if (intentCore) {
+          intentCore.className = "flex flex-col items-center justify-center p-4 sm:p-5 bg-[#ff781f]/20 border-2 border-[#ff781f] rounded-2xl shadow-[0_0_30px_rgba(255,120,31,0.5)] text-center transition-all duration-500 scale-105";
+          playChalkSound('snap');
+          emitChalkDust(canvas.width / 2, canvas.height / 2, 25, '#ff781f');
+        }
+      }
+    }
+
+    function attachBeat4AudioSync(audioEl) {
+      if (!audioEl) return;
+      audioEl.ontimeupdate = () => {
+        const t = audioEl.currentTime;
+        if (t >= 1.6) triggerBeat4Stage(1);
+        if (t >= 2.8) triggerBeat4Stage(2);
+        if (t >= 3.8) triggerBeat4Stage(3);
+        if (t >= 4.6) triggerBeat4Stage(4);
+        if (t >= 5.4) triggerBeat4Stage(5);
+        if (t >= 6.6) triggerBeat4Stage(6);
+      };
+    }
+
+    function runBeat4IntentChoreography() {
+      if (sceneDemoTimer) { clearTimeout(sceneDemoTimer); sceneDemoTimer = null; }
+      beat4IntentStage = 0;
+
+      const inputVoice = document.getElementById('p2-input-voice');
+      const inputKeyboard = document.getElementById('p2-input-keyboard');
+      const inputMouse = document.getElementById('p2-input-mouse');
+      const inputJoystick = document.getElementById('p2-input-joystick');
+      const inputSwitch = document.getElementById('p2-input-switch');
+      const intentCore = document.getElementById('p2-intent-core');
+      const intentVerbs = document.getElementById('p2-intent-verbs');
+      const intentArrow = document.getElementById('p2-intent-arrow');
+      const intentActionBadge = document.getElementById('p2-intent-action-badge');
+
+      const allInputs = [inputVoice, inputKeyboard, inputMouse, inputJoystick, inputSwitch];
+
+      // Neutral initial state
+      allInputs.forEach(el => {
+        if (el) el.className = "bg-black/50 border border-white/10 px-2.5 py-0.5 rounded text-white transition-all duration-300";
+      });
+      if (intentCore) intentCore.className = "flex flex-col items-center justify-center p-4 sm:p-5 bg-[#ff781f]/10 border-2 border-white/15 rounded-2xl shadow-none text-center transition-all duration-500";
+      if (intentVerbs) intentVerbs.className = "text-[11px] font-mono-code text-[#ffa15e]/60 mt-1 font-medium transition-all duration-300";
+      if (intentArrow) intentArrow.className = "text-white/40 font-mono-code font-bold text-sm sm:text-base transition-all duration-300";
+      if (intentActionBadge) intentActionBadge.className = "bg-white/5 border border-white/15 px-3 py-1.5 rounded-xl text-xs font-bold text-white/50 font-mono-code text-center shadow-none transition-all duration-500";
+
+      // Fallback timers if narration is muted
+      if (!voiceNarrationEnabled) {
+        sceneDemoTimer = setTimeout(() => {
+          triggerBeat4Stage(1);
+          sceneDemoTimer = setTimeout(() => {
+            triggerBeat4Stage(2);
+            sceneDemoTimer = setTimeout(() => {
+              triggerBeat4Stage(3);
+              sceneDemoTimer = setTimeout(() => {
+                triggerBeat4Stage(4);
+                sceneDemoTimer = setTimeout(() => {
+                  triggerBeat4Stage(5);
+                  sceneDemoTimer = setTimeout(() => {
+                    triggerBeat4Stage(6);
+                  }, 1200);
+                }, 800);
+              }, 800);
+            }, 900);
+          }, 1200);
+        }, 1600);
+      }
+    }
+
+    function runBeat4bOutputFlow() {
+      const intentVerbs = document.getElementById('p2-intent-verbs');
+      const intentArrow = document.getElementById('p2-intent-arrow');
+      const intentActionBadge = document.getElementById('p2-intent-action-badge');
+
+      if (intentVerbs) {
+        intentVerbs.className = "text-[11px] font-mono-code text-[#ffa15e] mt-1 font-bold drop-shadow-[0_0_8px_#ff781f] transition-all duration-300";
+      }
+      if (intentArrow) {
+        intentArrow.className = "text-[#ff781f] font-mono-code font-bold text-sm sm:text-base drop-shadow-[0_0_10px_#ff781f] transition-all duration-300";
+      }
+      if (intentActionBadge) {
+        intentActionBadge.className = "bg-[#ff781f]/20 border-2 border-[#ff781f] px-3 py-1.5 rounded-xl text-xs font-bold text-white font-mono-code text-center shadow-[0_0_25px_rgba(255,120,31,0.5)] transition-all duration-500 scale-105";
+        playChalkSound('snap');
+        emitChalkDust(canvas.width / 2 + 130, canvas.height / 2, 20, '#ffa15e');
+      }
+    }
+
+    // Beat 07: The Meaning Erasure & Flex Reveal Synchronized to Spoken Narration
+    let beat7Revealed = false;
+
+    function triggerBeat7FlexReveal() {
+      if (beat7Revealed) return;
+      beat7Revealed = true;
+
+      const constraints = document.getElementById('p2-meaning-constraints');
+      const resolution = document.getElementById('p2-meaning-resolution');
+      if (!constraints || !resolution) return;
+
+      emitChalkDust(canvas.width / 2, canvas.height / 2 - 30, 45, '#ffffff');
+      emitChalkDust(canvas.width / 2, canvas.height / 2 - 30, 30, '#ff781f');
+      playChalkSound('snap');
+
+      constraints.style.opacity = '0.12';
+      constraints.style.transform = 'scale(0.96)';
+      resolution.style.opacity = '1';
+      resolution.style.transform = 'scale(1)';
+    }
+
+    function attachBeat7AudioSync(audioEl) {
+      if (!audioEl) return;
+      audioEl.ontimeupdate = () => {
+        if (audioEl.currentTime >= 8.5) {
+          triggerBeat7FlexReveal();
+        }
+      };
+    }
+
+    function runBeat7MeaningSequence() {
+      if (meaningTimer) { clearTimeout(meaningTimer); meaningTimer = null; }
+      beat7Revealed = false;
+
+      const constraints = document.getElementById('p2-meaning-constraints');
+      const resolution = document.getElementById('p2-meaning-resolution');
+      if (!constraints || !resolution) return;
+
+      constraints.style.opacity = '1';
+      constraints.style.transform = 'scale(1)';
+      resolution.style.opacity = '0';
+      resolution.style.transform = 'scale(0.95)';
+
+      // Fallback timer if voice narration is disabled
+      if (!voiceNarrationEnabled) {
+        meaningTimer = setTimeout(triggerBeat7FlexReveal, 8600);
+      }
+    }
+
+    // =========================================================================
+    // USER CONTROLS & MANUAL JUMPS
+    // =========================================================================
+    function jumpToStage(targetStage) {
+      stopAllPlaybackAndTimers();
+      isPlaying = true;
+      playIcon.classList.add('hidden');
+      pauseIcon.classList.remove('hidden');
+
+      playChalkSound(targetStage === 2 || targetStage === 3.5 ? 'snap' : 'draw');
+      if (targetStage === 1) {
+        triggerGlyphDust(charA, '#ffffff');
+        triggerGlyphDust(charCH, '#ffffff');
+      } else if (targetStage === 2) {
+        triggerGlyphDust(charR, '#ff781f');
+        triggerGlyphDust(charI, '#ff781f');
+      } else if (targetStage === 3) {
+        triggerGlyphDust(charA, '#ffffff');
+        triggerGlyphDust(charR, '#ff781f');
+        triggerGlyphDust(charCH, '#ffffff');
+        triggerGlyphDust(charI, '#ff781f');
+      } else if (targetStage === 3.5) {
+        emitChalkDust(canvas.width / 2, canvas.height / 2 - 20, 35, '#ff781f');
+        emitChalkDust(canvas.width / 2, canvas.height / 2 - 20, 20, '#ffffff');
+      }
+      applyStage(targetStage, true);
+      if (voiceNarrationEnabled) {
+        playNarrationForStep(targetStage, getNextStepCallback(targetStage));
+      }
+    }
+
+    function jumpToPhase2Beat(beatNum) {
+      stopAllPlaybackAndTimers();
+      isPlaying = true;
+      playIcon.classList.add('hidden');
+      pauseIcon.classList.remove('hidden');
+
+      playChalkSound('draw');
+      emitChalkDust(canvas.width / 2, canvas.height / 2 - 20, 20, '#ffa15e');
+      applyPhase2Beat(beatNum, true);
+      if (voiceNarrationEnabled) {
+        playNarrationForPhase2Beat(beatNum, getPhase2NextCallback(beatNum));
+      }
+    }
+
+    function onSliderScrub(val) {
+      stopAllPlaybackAndTimers();
+      isPlaying = false;
+      playIcon.classList.remove('hidden');
+      pauseIcon.classList.add('hidden');
+
+      if (currentPhase === 1) {
+        applyStage(parseFloat(val), false);
+      } else {
+        applyPhase2Beat(Math.round(parseFloat(val)), false);
+      }
+    }
+
+    function transitionTo(targetStage, duration, onComplete) {
+      const startStage = currentStage;
+      const startTime = performance.now();
+
+      function stepTween(now) {
+        if (!isPlaying) return;
+
+        const elapsed = now - startTime;
+        const progress = Math.min(1, elapsed / duration);
+        const ease = progress < 0.5 
+          ? 4 * progress * progress * progress 
+          : 1 - Math.pow(-2 * progress + 2, 3) / 2;
+
+        const currentVal = startStage + (targetStage - startStage) * ease;
+        applyStage(currentVal, false);
+
+        if (progress < 1) {
+          requestAnimationFrame(stepTween);
+        } else {
+          applyStage(targetStage, true);
+          if (onComplete) onComplete();
+        }
+      }
+
+      requestAnimationFrame(stepTween);
+    }
+
+    function getNextStepCallback(stepNum) {
+      if (stepNum === 1) {
+        return () => {
+          if (!isPlaying) return;
+          playChalkSound('snap');
+          transitionTo(2.0, 1400, () => {
+            if (!isPlaying) return;
+            triggerGlyphDust(charR, '#ff781f');
+            triggerGlyphDust(charI, '#ff781f');
+            playNarrationForStep(2, getNextStepCallback(2));
+          });
+        };
+      } else if (stepNum === 2) {
+        return () => {
+          if (!isPlaying) return;
+          playChalkSound('draw');
+          transitionTo(3.0, 1400, () => {
+            if (!isPlaying) return;
+            triggerGlyphDust(charA, '#ffffff');
+            triggerGlyphDust(charR, '#ff781f');
+            triggerGlyphDust(charCH, '#ffffff');
+            triggerGlyphDust(charI, '#ff781f');
+            playNarrationForStep(3, getNextStepCallback(3));
+          });
+        };
+      } else if (stepNum === 3) {
+        return () => {
+          if (!isPlaying) return;
+          playChalkSound('snap');
+          transitionTo(3.5, 1600, () => {
+            if (!isPlaying) return;
+            emitChalkDust(canvas.width / 2, canvas.height / 2 - 20, 35, '#ff781f');
+            emitChalkDust(canvas.width / 2, canvas.height / 2 - 20, 20, '#ffffff');
+            playNarrationForStep(3.5, getNextStepCallback(3.5));
+          });
+        };
+      } else {
+        // Step 3.5 completes -> Smoothly transition to Part II
+        return () => {
+          if (!isPlaying) return;
+          stepTimer = setTimeout(() => {
+            if (!isPlaying) return;
+            switchPhase(2, true);
+          }, 3200);
+        };
+      }
+    }
+
+    function getPhase2NextCallback(beatNum) {
+      if (beatNum < 9) {
+        return () => {
+          if (!isPlaying) return;
+          const next = beatNum + 1;
+          stepTimer = setTimeout(() => {
+            if (!isPlaying) return;
+            playChalkSound('draw');
+            applyPhase2Beat(next, true);
+            playNarrationForPhase2Beat(next, getPhase2NextCallback(next));
+          }, 1200);
+        };
+      } else {
+        // Final beat completes -> Loop if enabled
+        return () => {
+          if (!isPlaying) return;
+          if (isLooping) {
+            stepTimer = setTimeout(() => {
+              if (!isPlaying) return;
+              switchPhase(1, true);
+            }, 4000);
+          } else {
+            stopPlay();
+          }
+        };
+      }
+    }
+
+    function runStorySequence() {
+      if (!isPlaying) return;
+      if (currentPhase === 1) {
+        applyStage(1.0, true);
+        playChalkSound('draw');
+        triggerGlyphDust(charA, '#ffffff');
+        triggerGlyphDust(charCH, '#ffffff');
+        playNarrationForStep(1, getNextStepCallback(1));
+      } else {
+        applyPhase2Beat(currentPhase2Beat, true);
+        playNarrationForPhase2Beat(currentPhase2Beat, getPhase2NextCallback(currentPhase2Beat));
+      }
+    }
+
+    function togglePlay() {
+      if (isPlaying) {
+        stopPlay();
+      } else {
+        startPlay();
+      }
+    }
+
+    function startPlay() {
+      isPlaying = true;
+      playIcon.classList.add('hidden');
+      pauseIcon.classList.remove('hidden');
+      runStorySequence();
+    }
+
+    function stopPlay() {
+      isPlaying = false;
+      playIcon.classList.remove('hidden');
+      pauseIcon.classList.add('hidden');
+      stopAllPlaybackAndTimers();
+    }
+
+    function toggleLoop() {
+      isLooping = !isLooping;
+      const loopText = document.getElementById('loop-text');
+      const loopBtn = document.getElementById('loop-btn');
+      if (isLooping) {
+        loopText.textContent = 'Auto-Play: ON';
+        loopBtn.classList.add('text-[#ff781f]');
+      } else {
+        loopText.textContent = 'Auto-Play: OFF';
+        loopBtn.classList.remove('text-[#ff781f]');
+      }
+    }
+
+    function pulseLetter(name) {
+      playChalkSound('snap');
+      if (name === 'A') triggerGlyphDust(charA, '#ffffff');
+      if (name === 'R') triggerGlyphDust(charR, '#ff781f');
+      if (name === 'CH') triggerGlyphDust(charCH, '#ffffff');
+      if (name === 'I') triggerGlyphDust(charI, '#ff781f');
+      emitChalkDust(canvas.width / 2, canvas.height / 2 - 20, 20, '#ff781f');
+    }
+
+    // Initial setup
+    switchPhase(1, false);
+  </script>
+</body>
+</html>

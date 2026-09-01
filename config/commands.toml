@@ -1,118 +1,105 @@
-# ArCHi's allowlisted command registry. Actions are argv arrays, never shell text.
-
-[[commands]]
-id = "open_terminal"
-phrases = ["open terminal", "launch terminal", "start terminal"]
-action = "launch"
-argv = ["omarchy-launch-terminal"]
-reply = "Opening terminal."
-
-[[commands]]
-id = "open_browser"
-phrases = ["open browser", "launch browser", "start browser", "open web browser"]
-action = "launch"
-argv = ["omarchy-launch-browser"]
-reply = "Opening browser."
-
-[[commands]]
-id = "open_default_agent"
-phrases = ["open agent", "launch agent", "start agent", "open omarchy agent", "open default agent"]
-action = "launch"
-argv = ["omarchy-agent"]
-reply = "Opening the default Omarchy agent."
-
-[[commands]]
-id = "open_files"
-phrases = ["open files", "open file manager", "launch file manager", "start files"]
-action = "launch"
-argv = ["omarchy-launch-nautilus"]
-reply = "Opening files."
+# ArCHi's allowlisted operational command registry.
+# Machine-specific actions name capabilities; adapters own their implementation.
 
 [[commands]]
 id = "open_home"
 phrases = ["open home", "open home folder", "open my home folder"]
-action = "launch"
-argv = ["xdg-open", "{home}"]
+action = "capability"
+capability = "folder.open"
+payload = { path = "{home}" }
 reply = "Opening home."
 
 [[commands]]
 id = "open_downloads"
 phrases = ["open downloads", "open downloads folder"]
-action = "launch"
-argv = ["xdg-open", "{home}/Downloads"]
+action = "capability"
+capability = "folder.open"
+payload = { path = "{home}/Downloads" }
 reply = "Opening downloads."
 
 [[commands]]
 id = "volume_up"
 phrases = ["volume up", "turn volume up", "make it louder", "louder"]
-action = "run"
-argv = ["omarchy-audio-output-volume", "raise"]
+action = "capability"
+capability = "audio.volume.raise"
 reply = "Volume up."
 
 [[commands]]
 id = "volume_down"
 phrases = ["volume down", "turn volume down", "make it quieter", "quieter"]
-action = "run"
-argv = ["omarchy-audio-output-volume", "lower"]
+action = "capability"
+capability = "audio.volume.lower"
 reply = "Volume down."
 
 [[commands]]
 id = "mute"
-phrases = ["mute", "mute audio", "mute volume"]
-action = "run"
-argv = ["omarchy-audio-output-volume", "mute-toggle"]
+phrases = ["mute", "mute audio", "mute volume", "mute sound", "turn volume off", "turn sound off"]
+action = "capability"
+capability = "audio.mute"
+payload = { state = "mute" }
+reply = "Audio muted."
+
+[[commands]]
+id = "unmute"
+phrases = ["unmute", "unmute audio", "unmute volume", "unmute sound", "turn volume on", "turn sound on"]
+action = "capability"
+capability = "audio.mute"
+payload = { state = "unmute" }
+reply = "Audio unmuted."
+
+[[commands]]
+id = "toggle_mute"
+phrases = ["toggle mute", "toggle audio mute", "toggle volume mute"]
+action = "capability"
+capability = "audio.mute"
+payload = { state = "toggle" }
 reply = "Audio mute toggled."
 
 [[commands]]
 id = "lock_computer"
 phrases = ["lock computer", "lock the computer", "lock screen", "lock the screen"]
-action = "run"
-argv = ["loginctl", "lock-session"]
+action = "capability"
+capability = "session.lock"
 reply = "Locking computer."
 reply_before = true
 
 [[commands]]
 id = "take_screenshot"
 phrases = ["take screenshot", "take a screenshot", "screenshot", "capture screenshot"]
-action = "launch"
-argv = ["omarchy-capture-screenshot"]
+action = "capability"
+capability = "screenshot.capture"
 reply = "Taking a screenshot."
 reply_before = true
 
 [[commands]]
 id = "close_active_window"
 phrases = ["close this window", "close current window", "close active window", "close the active window", "close window", "dismiss this window"]
-action = "run"
-argv = ["hyprctl", "dispatch", "hl.dsp.window.close()"]
+action = "capability"
+capability = "window.close_active"
 reply = "Closing window."
 
 [[commands]]
-id = "close_terminal"
-phrases = ["close terminal", "quit terminal", "exit terminal"]
-action = "run"
-argv = ["{archi_bin}/archi-close-target", "terminal"]
-reply = "Closing terminal."
+id = "close_home"
+phrases = ["close home", "close home folder", "quit home", "exit home"]
+action = "capability"
+capability = "folder.close"
+payload = { window_classes = ["org.gnome.Nautilus", "org.gnome.NautilusPreviewer"], window_titles = ["Home"], require_title = true }
+reply = "Closing home."
 
 [[commands]]
-id = "close_browser"
-phrases = ["close browser", "quit browser", "exit browser"]
-action = "run"
-argv = ["{archi_bin}/archi-close-target", "browser"]
-reply = "Closing browser."
-
-[[commands]]
-id = "close_files"
-phrases = ["close files", "quit files", "close file manager"]
-action = "run"
-argv = ["{archi_bin}/archi-close-target", "files"]
-reply = "Closing files."
+id = "close_downloads"
+phrases = ["close downloads", "close downloads folder", "quit downloads", "exit downloads"]
+action = "capability"
+capability = "folder.close"
+payload = { window_classes = ["org.gnome.Nautilus", "org.gnome.NautilusPreviewer"], window_titles = ["Downloads"], require_title = true }
+reply = "Closing downloads."
 
 [[commands]]
 id = "close_clarify"
 phrases = ["close", "quit", "exit", "dismiss"]
 action = "clarify"
-prompt = "What should I close: terminal, browser, files, or this window?"
-targets = { terminal = "close_terminal", browser = "close_browser", files = "close_files", window = "close_active_window" }
+prompt = "What should I close: an installed app, home, downloads, or this window?"
+targets = { home = "close_home", downloads = "close_downloads", window = "close_active_window" }
 
 [[commands]]
 id = "read_clipboard"
@@ -143,15 +130,15 @@ reply = "Logging on."
 [[commands]]
 id = "next_workspace"
 phrases = ["next workspace", "switch to next workspace"]
-action = "run"
-argv = ["hyprctl", "dispatch", "hl.dsp.focus({ workspace = \"e+1\" })"]
+action = "capability"
+capability = "workspace.next"
 reply = "Next workspace."
 
 [[commands]]
 id = "previous_workspace"
 phrases = ["previous workspace", "last workspace", "switch to previous workspace"]
-action = "run"
-argv = ["hyprctl", "dispatch", "hl.dsp.focus({ workspace = \"e-1\" })"]
+action = "capability"
+capability = "workspace.previous"
 reply = "Previous workspace."
 
 [[commands]]
@@ -164,10 +151,10 @@ reply = "I'm ArCHi."
 id = "help"
 phrases = ["help", "what can you do"]
 action = "reply"
-reply = "I can open apps, control audio, take screenshots, manage windows, read the clipboard, lock the computer, switch workspaces, and control logging."
+reply = "I can open and close installed apps and folders, control volume and mute state, take screenshots, manage windows, read the clipboard, lock the computer, switch workspaces, and control logging."
 
 [[commands]]
 id = "list_commands"
 phrases = ["list commands", "show commands", "what commands do you know", "command list"]
 action = "reply"
-reply = "Commands include opening terminal, browser, files, home, and downloads; volume up, volume down, and mute; screenshots; locking; closing windows, terminals, browsers, and files; reading the clipboard; stopping speech; switching workspaces; and controlling logging."
+reply = "Say open or close followed by an installed app name. System commands include home, downloads, volume, mute, screenshots, locking, windows, clipboard reading, workspaces, and logging."

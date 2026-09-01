@@ -15,6 +15,15 @@ def write_executable(path: Path, contents: str) -> None:
     path.chmod(0o755)
 
 
+def wait_for_file(path: Path, timeout: float = 2) -> None:
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if path.exists():
+            return
+        time.sleep(0.01)
+    raise AssertionError(f"timed out waiting for {path}")
+
+
 def test_installer_preserves_registry_and_can_refresh_it(tmp_path):
     bin_dir = tmp_path / "bin"
     archi_home = tmp_path / "share" / "archi"
@@ -34,6 +43,12 @@ def test_installer_preserves_registry_and_can_refresh_it(tmp_path):
     assert active_registry.read_text() == project_registry
     assert default_registry.read_text() == project_registry
     assert (archi_home / "intents.yaml").read_text() == project_intents
+    assert (archi_home / "applications.py").is_file()
+    assert (archi_home / "feedback.py").is_file()
+    assert (archi_home / "text.py").is_file()
+    assert (archi_home / "adapters" / "base.py").is_file()
+    assert (archi_home / "adapters" / "omarchy.py").is_file()
+    assert os.access(bin_dir / "archi-verbal-stop-monitor", os.X_OK)
     migrated_voice = archi_home / "assets" / "voice.wav"
     assert migrated_voice.read_bytes() == b"private voice sample"
     assert migrated_voice.stat().st_mode & 0o777 == 0o600
@@ -137,6 +152,136 @@ def test_control_stop_bounds_missing_transcript_wait(tmp_path):
     assert not (runtime_dir / "control-session-id").exists()
 
 
+def test_control_start_launches_scoped_verbal_stop_monitor(tmp_path):
+    fake_bin = tmp_path / "fake-bin"
+    fake_bin.mkdir()
+    voxtype_marker = tmp_path / "voxtype-args"
+    monitor_marker = tmp_path / "monitor-args"
+    write_executable(
+        fake_bin / "voxtype",
+        "#!/usr/bin/env bash\nprintf '%s\\n' \"$@\" > \"$ARCHI_TEST_VOXTYPE_MARKER\"\n",
+    )
+    write_executable(
+        fake_bin / "archi-verbal-stop-monitor",
+        "#!/usr/bin/env bash\nprintf '%s\\n' \"$@\" > \"$ARCHI_TEST_MONITOR_MARKER\"\n",
+    )
+    runtime_root = tmp_path / "runtime"
+    env = {
+        **os.environ,
+        "PATH": f"{fake_bin}:{os.environ['PATH']}",
+        "ARCHI_BIN_DIR": str(fake_bin),
+        "ARCHI_TEST_VOXTYPE_MARKER": str(voxtype_marker),
+        "ARCHI_TEST_MONITOR_MARKER": str(monitor_marker),
+        "XDG_RUNTIME_DIR": str(runtime_root),
+    }
+
+    subprocess.run([PROJECT_ROOT / "scripts" / "archi-control-start"], env=env, check=True)
+    wait_for_file(monitor_marker)
+
+    runtime_dir = runtime_root / "archi"
+    session_id = (runtime_dir / "control-session-id").read_text()
+    assert voxtype_marker.read_text().splitlines() == [
+        "record",
+        "start",
+        f"--file={runtime_dir / 'control-transcript.txt'}",
+    ]
+    assert monitor_marker.read_text().strip() == session_id
+    assert (runtime_dir / "verbal-stop-monitor.pid").exists()
+
+
+def test_verbal_stop_monitor_requests_stop_on_local_phrase(tmp_path):
+    fake_bin = tmp_path / "fake-bin"
+    fake_bin.mkdir()
+    stop_marker = tmp_path / "stop-args"
+    write_executable(
+        fake_bin / "pw-record",
+        "#!/usr/bin/env bash\nhead -c 64000 /dev/zero\n",
+    )
+    write_executable(
+        fake_bin / "voxtype",
+        "#!/usr/bin/env bash\nprintf 'Open terminal. Archie, stop.\\n'\n",
+    )
+    write_executable(
+        fake_bin / "archi-control-stop",
+        "#!/usr/bin/env bash\nprintf '%s\\n' \"$@\" > \"$ARCHI_TEST_STOP_MARKER\"\n",
+    )
+    runtime_root = tmp_path / "runtime"
+    runtime_dir = runtime_root / "archi"
+    runtime_dir.mkdir(parents=True)
+    (runtime_dir / "control-session-id").write_text("verbal-session")
+    env = {
+        **os.environ,
+        "PATH": f"{fake_bin}:{os.environ['PATH']}",
+        "ARCHI_BIN_DIR": str(fake_bin),
+        "ARCHI_CONTROL_STOP": str(fake_bin / "archi-control-stop"),
+        "ARCHI_MAX_RECORDING_SECONDS": "5",
+        "ARCHI_VERBAL_STOP_PROBE_SECONDS": "0.01",
+        "ARCHI_VERBAL_STOP_WINDOW_SECONDS": "0.5",
+        "ARCHI_TEST_STOP_MARKER": str(stop_marker),
+        "XDG_RUNTIME_DIR": str(runtime_root),
+    }
+
+    subprocess.run(
+        [
+            sys.executable,
+            PROJECT_ROOT / "scripts" / "archi-verbal-stop-monitor",
+            "verbal-session",
+        ],
+        env=env,
+        check=True,
+        timeout=5,
+    )
+    wait_for_file(stop_marker)
+    assert stop_marker.read_text().splitlines() == [
+        "--verbal",
+        "--session-id",
+        "verbal-session",
+    ]
+
+
+def test_verbal_stop_monitor_enforces_max_duration(tmp_path):
+    fake_bin = tmp_path / "fake-bin"
+    fake_bin.mkdir()
+    stop_marker = tmp_path / "stop-args"
+    write_executable(fake_bin / "pw-record", "#!/usr/bin/env bash\nsleep 2\n")
+    write_executable(fake_bin / "voxtype", "#!/usr/bin/env bash\nexit 0\n")
+    write_executable(
+        fake_bin / "archi-control-stop",
+        "#!/usr/bin/env bash\nprintf '%s\\n' \"$@\" > \"$ARCHI_TEST_STOP_MARKER\"\n",
+    )
+    runtime_root = tmp_path / "runtime"
+    runtime_dir = runtime_root / "archi"
+    runtime_dir.mkdir(parents=True)
+    (runtime_dir / "control-session-id").write_text("timeout-session")
+    env = {
+        **os.environ,
+        "PATH": f"{fake_bin}:{os.environ['PATH']}",
+        "ARCHI_BIN_DIR": str(fake_bin),
+        "ARCHI_CONTROL_STOP": str(fake_bin / "archi-control-stop"),
+        "ARCHI_MAX_RECORDING_SECONDS": "0.1",
+        "ARCHI_VERBAL_STOP_PROBE_SECONDS": "0.05",
+        "ARCHI_TEST_STOP_MARKER": str(stop_marker),
+        "XDG_RUNTIME_DIR": str(runtime_root),
+    }
+
+    subprocess.run(
+        [
+            sys.executable,
+            PROJECT_ROOT / "scripts" / "archi-verbal-stop-monitor",
+            "timeout-session",
+        ],
+        env=env,
+        check=True,
+        timeout=5,
+    )
+    wait_for_file(stop_marker)
+    assert stop_marker.read_text().splitlines() == [
+        "--timeout",
+        "--session-id",
+        "timeout-session",
+    ]
+
+
 def test_control_cancel_removes_all_session_files(tmp_path):
     fake_bin = tmp_path / "fake-bin"
     fake_bin.mkdir()
@@ -165,7 +310,7 @@ def test_control_cancel_removes_all_session_files(tmp_path):
     assert not start_time.exists()
 
 
-def test_tts_uses_bounded_request_and_safe_volume_default(tmp_path):
+def test_tts_uses_clipboard_safe_request_timeout_and_safe_volume_default(tmp_path):
     fake_bin = tmp_path / "fake-bin"
     fake_bin.mkdir()
     curl_marker = tmp_path / "curl-args"
@@ -204,7 +349,6 @@ exit 2
         "ARCHI_TEST_CURL_MARKER": str(curl_marker),
         "ARCHI_TEST_PLAYER_MARKER": str(player_marker),
         "ARCHI_TEST_VALID_WAV": str(valid_wav),
-        "POCKET_TTS_TIMEOUT_SECONDS": "2",
         "POCKET_TTS_VOLUME": "not-a-number",
         "XDG_RUNTIME_DIR": str(runtime_root),
     }
@@ -219,7 +363,7 @@ exit 2
 
     curl_args = curl_marker.read_text().splitlines()
     player_args = player_marker.read_text().splitlines()
-    assert curl_args[curl_args.index("--max-time") + 1] == "2"
+    assert curl_args[curl_args.index("--max-time") + 1] == "60"
     assert curl_args[curl_args.index("--connect-timeout") + 1] == "2"
     assert player_args[player_args.index("--volume") + 1] == "1.0"
     assert not (runtime_root / "archi" / "pocket-tts-player.pid").exists()

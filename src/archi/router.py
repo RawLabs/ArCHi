@@ -14,6 +14,17 @@ import tomllib
 import uuid
 from pathlib import Path
 
+try:
+    from .adapters import ActionResult, select_desktop_adapter
+    from .applications import scan_desktop_apps
+    from .feedback import emit_feedback
+    from .text import normalize
+except ImportError:  # Installed router is also executable as a standalone script.
+    from adapters import ActionResult, select_desktop_adapter
+    from applications import scan_desktop_apps
+    from feedback import emit_feedback
+    from text import normalize
+
 
 BASE = Path(__file__).resolve().parent
 SOURCE_REGISTRY_PATH = BASE.parents[1] / "config" / "commands.toml"
@@ -37,25 +48,53 @@ OFF_RECORD_PATH = RUNTIME_DIR / "off-record"
 PENDING_PATH = RUNTIME_DIR / "pending.json"
 ARCHI_BIN_DIR = Path(os.environ.get("ARCHI_BIN_DIR", Path.home() / ".local" / "bin"))
 SPEAK = os.environ.get("ARCHI_TTS_SAY", str(ARCHI_BIN_DIR / "pocket-tts-say"))
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 INPUT_SOURCE = "voxtype-control"
+APP_ACTION_VERBS = {
+    "open": "app.open",
+    "launch": "app.open",
+    "start": "app.open",
+    "close": "app.close",
+    "quit": "app.close",
+    "exit": "app.close",
+}
 
 
-def normalize(text: str) -> str:
-    text = text.casefold().strip()
-    text = re.sub(r"[^\w\s']", " ", text, flags=re.UNICODE)
-    text = re.sub(r"\s+", " ", text).strip()
-    for assistant_name in ("archi", "archie"):
-        if text == assistant_name:
-            return ""
-        if text.startswith(f"{assistant_name} "):
-            text = text[len(assistant_name):].strip()
-            break
-    for prefix in ("please ", "can you ", "could you ", "would you ", "will you "):
-        if text.startswith(prefix):
-            text = text[len(prefix):].strip()
-            break
-    return text
+def dynamic_app_commands() -> list[dict]:
+    """Build open/close commands, omitting aliases shared by multiple apps."""
+    apps = scan_desktop_apps()
+    owners: dict[str, set[str]] = {}
+    for app in apps:
+        for alias in app.aliases:
+            owners.setdefault(alias, set()).add(app.desktop_id)
+
+    commands = []
+    for app in apps:
+        aliases = sorted(alias for alias in app.aliases if len(owners[alias]) == 1)
+        if not aliases:
+            continue
+        payload = {**app.action_payload(), "app_aliases": aliases}
+        commands.extend([
+            {
+                "id": f"open_app:{app.desktop_id}",
+                "phrases": [f"{verb} {alias}" for alias in aliases for verb in ("open", "launch", "start")],
+                "action": "capability",
+                "capability": "app.open",
+                "payload": payload,
+                "desktop_id": app.desktop_id,
+                "reply": f"Opening {app.name}.",
+            },
+            {
+                "id": f"close_app:{app.desktop_id}",
+                "phrases": [f"{verb} {alias}" for alias in aliases for verb in ("close", "quit", "exit")],
+                "action": "capability",
+                "capability": "app.close",
+                "payload": payload,
+                "desktop_id": app.desktop_id,
+                "reply": f"Closing {app.name}.",
+            },
+        ])
+    return commands
 
 
 def load_commands() -> tuple[dict[str, dict], dict[str, dict]]:
@@ -63,7 +102,7 @@ def load_commands() -> tuple[dict[str, dict], dict[str, dict]]:
         entries = tomllib.load(stream).get("commands", [])
     by_phrase: dict[str, dict] = {}
     by_id: dict[str, dict] = {}
-    for entry in entries:
+    for entry in [*entries, *dynamic_app_commands()]:
         command_id = entry["id"]
         if command_id in by_id:
             raise ValueError(f"duplicate command id: {command_id}")
@@ -71,9 +110,95 @@ def load_commands() -> tuple[dict[str, dict], dict[str, dict]]:
         for phrase in entry.get("phrases", []):
             key = normalize(phrase)
             if key in by_phrase:
+                if entry.get("desktop_id"):
+                    continue
                 raise ValueError(f"duplicate command phrase: {phrase}")
             by_phrase[key] = entry
     return by_phrase, by_id
+
+
+def compact_app_alias(value: str) -> str:
+    """Remove spaces so separately spoken letters can match an app name."""
+    return "".join(normalize(value).split())
+
+
+def phonetic_app_alias(value: str) -> str:
+    """Treat q, c, and k as equivalent in an app name spoken aloud."""
+    return compact_app_alias(value).translate(str.maketrans({"q": "k", "c": "k"}))
+
+
+def one_edit_apart(left: str, right: str) -> bool:
+    """Return whether two strings differ by at most one insertion, deletion, or change."""
+    if left == right:
+        return True
+    if abs(len(left) - len(right)) > 1:
+        return False
+    if len(left) > len(right):
+        left, right = right, left
+    index = other_index = edits = 0
+    while index < len(left) and other_index < len(right):
+        if left[index] == right[other_index]:
+            index += 1
+            other_index += 1
+            continue
+        edits += 1
+        if edits > 1:
+            return False
+        if len(left) == len(right):
+            index += 1
+        other_index += 1
+    return True
+
+
+def split_app_command(phrase: str) -> tuple[str, str] | None:
+    """Extract an open/close verb and app target, accepting a missing separator."""
+    for verb, capability in APP_ACTION_VERBS.items():
+        if phrase.startswith(f"{verb} "):
+            return capability, phrase[len(verb):].strip()
+        if phrase.startswith(verb) and len(phrase) > len(verb):
+            return capability, phrase[len(verb):].strip()
+    return None
+
+
+def resolve_dynamic_app(phrase: str, commands_by_id: dict[str, dict]) -> tuple[dict, str] | None:
+    """Resolve a unique installed app after exact command matching has failed.
+
+    This intentionally applies only to application commands. Operational commands
+    remain exact registry phrases, while desktop-entry aliases accept natural
+    spaces, separately spoken letters, and the common q/c/k transcription swap.
+    A one-character correction is permitted only for names of five or more
+    characters and only where it identifies one installed application.
+    """
+    parsed = split_app_command(phrase)
+    if parsed is None:
+        return None
+    capability, target = parsed
+    if not target:
+        return None
+
+    target_compact = compact_app_alias(target)
+    target_phonetic = phonetic_app_alias(target)
+    matches: dict[str, tuple[dict, str]] = {}
+    fuzzy_matches: dict[str, tuple[dict, str]] = {}
+    for command in commands_by_id.values():
+        if command.get("capability") != capability or not command.get("desktop_id"):
+            continue
+        for alias in command.get("payload", {}).get("app_aliases", []):
+            compact_alias = compact_app_alias(alias)
+            if target_compact == compact_alias or target_phonetic == phonetic_app_alias(alias):
+                matches[command["id"]] = (command, alias)
+            elif (
+                len(target_phonetic) >= 5
+                and len(compact_alias) >= 5
+                and one_edit_apart(target_phonetic, phonetic_app_alias(alias))
+            ):
+                fuzzy_matches[command["id"]] = (command, alias)
+
+    if len(matches) == 1:
+        return next(iter(matches.values()))
+    if not matches and len(fuzzy_matches) == 1:
+        return next(iter(fuzzy_matches.values()))
+    return None
 
 
 def off_record() -> bool:
@@ -120,6 +245,11 @@ def speak(text: str, dry_run: bool) -> None:
     subprocess.run([SPEAK, text], check=False)
 
 
+def show_feedback(state: str, message: str, duration_ms: int, dry_run: bool) -> None:
+    if not dry_run:
+        emit_feedback(state, message, duration_ms, ARCHI_BIN_DIR)
+
+
 def log_event(event: dict, suppressed: bool) -> None:
     if suppressed:
         return
@@ -131,44 +261,11 @@ def log_event(event: dict, suppressed: bool) -> None:
 
 
 def desktop_context() -> dict:
-    """Capture read-only desktop context for later parser/UX analysis."""
-    context = {
-        "active_window_class": None,
-        "active_window_title": None,
-        "workspace_id": None,
-        "workspace_name": None,
-        "capture_status": "unavailable",
-    }
+    """Capture read-only context through the selected desktop adapter."""
     try:
-        active_window = subprocess.run(
-            ["hyprctl", "-j", "activewindow"],
-            capture_output=True,
-            text=True,
-            timeout=1,
-            check=False,
-        )
-        active_workspace = subprocess.run(
-            ["hyprctl", "-j", "activeworkspace"],
-            capture_output=True,
-            text=True,
-            timeout=1,
-            check=False,
-        )
-        if active_window.returncode == 0:
-            window = json.loads(active_window.stdout)
-            context["active_window_class"] = window.get("class") or None
-            context["active_window_title"] = window.get("title") or None
-        if active_workspace.returncode == 0:
-            workspace = json.loads(active_workspace.stdout)
-            context["workspace_id"] = workspace.get("id")
-            context["workspace_name"] = workspace.get("name") or None
-        if active_window.returncode == 0 and active_workspace.returncode == 0:
-            context["capture_status"] = "available"
-        elif active_window.returncode == 0 or active_workspace.returncode == 0:
-            context["capture_status"] = "partial"
-    except (OSError, subprocess.TimeoutExpired, json.JSONDecodeError):
-        pass
-    return context
+        return select_desktop_adapter(ARCHI_BIN_DIR).context()
+    except ValueError as error:
+        return {"capture_status": "unavailable", "detail": str(error)}
 
 
 def read_text(path: Path) -> str | None:
@@ -255,6 +352,15 @@ def hassil_shadow(phrase: str, commands_by_id: dict[str, dict] | None) -> dict:
     """Compare an independent HassIL grammar without allowing it to execute."""
     if not phrase:
         return {"parser": "hassil", "status": "skipped", "reason": "empty_phrase", "duration_ms": 0}
+    if commands_by_id is not None:
+        for command in commands_by_id.values():
+            if command.get("desktop_id") and phrase in map(normalize, command.get("phrases", [])):
+                return {
+                    "parser": "hassil",
+                    "status": "skipped",
+                    "reason": "dynamic_app_registry",
+                    "duration_ms": 0,
+                }
     started = time.monotonic()
     try:
         from hassil.intents import Intents
@@ -354,7 +460,7 @@ def event_base(
     }
 
 
-def record_silent(reason: str = "no_transcript") -> dict:
+def record_silent(reason: str = "no_transcript", dry_run: bool = False) -> dict:
     started = time.monotonic()
     was_off_record = off_record()
     event = event_base("", "", was_off_record)
@@ -364,8 +470,14 @@ def record_silent(reason: str = "no_transcript") -> dict:
         "silent_reason": reason,
         "duration_ms": round((time.monotonic() - started) * 1000),
     })
+    show_feedback("unknown", "No command heard.", 1800, dry_run)
     log_event(event, was_off_record)
     return {"status": "silent", "reason": reason}
+
+
+def feedback_phrase(phrase: str) -> str:
+    """Keep a transcript cue compact enough for a transient overlay."""
+    return phrase if len(phrase) <= 80 else f"{phrase[:77]}..."
 
 
 def expand_argv(argv: list[str]) -> list[str]:
@@ -382,29 +494,59 @@ def expand_argv(argv: list[str]) -> list[str]:
     return expanded
 
 
-def execute(command: dict, dry_run: bool) -> bool:
+def expand_payload(payload: dict) -> dict:
+    substitutions = {
+        "{home}": str(Path.home()),
+        "{archi_bin}": str(ARCHI_BIN_DIR),
+        "{archi_home}": str(DEPLOYED_REGISTRY_PATH.parent),
+    }
+    expanded = {}
+    for key, value in payload.items():
+        if isinstance(value, str):
+            for token, replacement in substitutions.items():
+                value = value.replace(token, replacement)
+        expanded[key] = value
+    return expanded
+
+
+def execute(command: dict, dry_run: bool) -> ActionResult:
     action = command.get("action")
     if action in {"reply", "clarify", "mode_off_record", "mode_logging_on"}:
-        return True
+        return ActionResult("success", "archi.core", action, None)
     argv = expand_argv(command.get("argv", []))
+    if action == "capability":
+        capability = command.get("capability", "")
+        try:
+            adapter = select_desktop_adapter(ARCHI_BIN_DIR)
+        except ValueError as error:
+            return ActionResult("unavailable", "none", capability, str(error))
+        if dry_run:
+            status = "success" if capability in adapter.capabilities() else "unsupported"
+            return ActionResult(status, adapter.provider_id, capability, None)
+        return adapter.execute(capability, expand_payload(command.get("payload", {})))
     if dry_run:
-        return True
+        return ActionResult("success", "archi.argv", action or "unknown", None)
     try:
         if action == "launch":
             subprocess.Popen(argv, start_new_session=True)
-            return True
+            return ActionResult("success", "archi.argv", action, None)
         if action == "run":
             result = subprocess.run(argv, timeout=20, check=False)
-            return result.returncode == 0
-    except (OSError, subprocess.TimeoutExpired):
-        return False
-    return False
+            status = "success" if result.returncode == 0 else "failed"
+            return ActionResult(status, "archi.argv", action, None)
+    except (OSError, subprocess.TimeoutExpired) as error:
+        return ActionResult("unavailable", "archi.argv", action or "unknown", str(error))
+    return ActionResult("unsupported", "archi.argv", action or "unknown", None)
 
 
 def route(text: str, dry_run: bool = False) -> dict:
     started = time.monotonic()
     raw_text = text.strip()
     phrase = normalize(text)
+    if not phrase:
+        return record_silent("empty_command", dry_run)
+    display_phrase = feedback_phrase(phrase)
+    show_feedback("heard", f"Heard: {display_phrase}", 1000, dry_run)
     was_off_record = off_record()
     by_phrase, by_id = load_commands()
     pending = load_pending()
@@ -415,6 +557,7 @@ def route(text: str, dry_run: bool = False) -> dict:
     if pending and phrase in {"cancel", "cancel that", "never mind"}:
         clear_pending()
         result = {"status": "cancelled", "reply": "Cancelled."}
+        show_feedback("cancelled", "Cancelled.", 900, dry_run)
         speak(result["reply"], dry_run)
         event = event_base(raw_text, phrase, was_off_record, by_id)
         event.update({
@@ -437,7 +580,13 @@ def route(text: str, dry_run: bool = False) -> dict:
         command = by_phrase.get(phrase)
 
     if command is None:
+        resolved_app = resolve_dynamic_app(phrase, by_id)
+        if resolved_app is not None:
+            command, alias = resolved_app
+
+    if command is None:
         reply = "I don't know that command yet."
+        show_feedback("unknown", f"Heard: {display_phrase}  No match.", 3000, dry_run)
         speak(reply, dry_run)
         result = {"status": "unknown", "reply": reply}
         event = event_base(raw_text, phrase, was_off_record, by_id)
@@ -456,6 +605,7 @@ def route(text: str, dry_run: bool = False) -> dict:
         if not dry_run:
             save_pending(command)
         reply = command["prompt"]
+        show_feedback("unknown", "Which target should I use?", 2200, dry_run)
         speak(reply, dry_run)
         result = {"status": "clarifying", "command_id": command_id, "reply": reply}
         event = event_base(raw_text, phrase, was_off_record, by_id)
@@ -483,23 +633,32 @@ def route(text: str, dry_run: bool = False) -> dict:
     reply = command.get("reply", "")
     if command.get("reply_before"):
         speak(reply, dry_run)
-    success = execute(command, dry_run)
+    execution = execute(command, dry_run)
+    success = execution.succeeded
     if success and not command.get("reply_before"):
         speak(reply, dry_run)
     if not success:
         reply = "That command failed."
         speak(reply, dry_run)
+        show_feedback("failed", reply, 3000, dry_run)
+    else:
+        show_feedback("success", reply or "Command complete.", 1300, dry_run)
 
     result = {
         "status": "success" if success else "failed",
         "command_id": command_id,
         "reply": reply,
+        "capability": command.get("capability"),
+        "provider_id": execution.provider_id,
+        "execution_status": execution.status,
     }
     event = event_base(raw_text, phrase, was_off_record, by_id)
     event.update({
         "matched_command_id": command_id, "matched_alias": alias,
         "result": result["status"], "clarification_count": clarification_count,
-        "action": action, "execution_status": result["status"],
+        "action": action, "execution_status": execution.status,
+        "capability": command.get("capability"), "provider_id": execution.provider_id,
+        "execution_detail": execution.detail,
         "duration_ms": round((time.monotonic() - started) * 1000),
     })
     log_event(event, was_off_record)
@@ -518,7 +677,7 @@ def main() -> int:
             print(command_id)
         return 0
     if args.silent:
-        result = record_silent()
+        result = record_silent(dry_run=args.dry_run)
         if args.dry_run:
             print(json.dumps(result))
         return 0

@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ArCHi — Artificial Restorative Computer Harness Intelligence</title>
+  <meta name="description" content="Local, deterministic, push-to-talk desktop command layer for Omarchy and Hyprland. High accessibility, zero cloud telemetry.">
+  <link rel="icon" type="image/png" href="../media/archi_favicon_regen.png">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <!-- Accessible Skip Link -->
+  <a href="#main-content" class="skip-link">Skip to main content</a>
+
+  <!-- Site Navigation -->
+  <header class="site-header" role="banner">
+    <div class="container nav-wrapper">
+      <a href="#" class="brand-link" aria-label="ArCHi Home">
+        <img src="../media/archi_mini_logo_regen.png" alt="ArCHi Logo" class="brand-logo-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-flex';">
+        <span class="brand-fallback-icon" style="display:none;" aria-hidden="true">A<span class="accent">r</span></span>
+        <div class="brand-title">
+          A<span class="accent-r">r</span>CH<span class="accent-i">i</span>
+        </div>
+      </a>
+
+      <!-- Navigation Links -->
+      <nav class="nav-links" aria-label="Primary Navigation">
+        <a href="#overview" class="nav-link">Overview</a>
+        <a href="#simulator" class="nav-link">Live Playground</a>
+        <a href="#features" class="nav-link">Features</a>
+        <a href="#commands" class="nav-link">Command Registry</a>
+        <a href="#quickstart" class="nav-link">Quickstart</a>
+        <a href="#architecture" class="nav-link">Architecture</a>
+        <a href="logo_animation.html" class="nav-link" style="color: var(--accent-amber); font-weight: 600;">✨ AʳCHⁱ Logo Lab</a>
+      </nav>
+
+      <!-- Accessibility Settings Toolbar -->
+      <div class="a11y-controls" role="toolbar" aria-label="Accessibility & Display Controls">
+        <span class="a11y-label">Text:</span>
+        <button class="a11y-btn active" data-font-size="default" aria-label="Default text size" title="Default text size">A</button>
+        <button class="a11y-btn" data-font-size="large" aria-label="Large text size" title="Large text size">A+</button>
+        <button class="a11y-btn" data-font-size="xlarge" aria-label="Extra large text size" title="Extra large text size">A++</button>
+
+        <span class="a11y-label" style="margin-left: 0.35rem;">Theme:</span>
+        <button class="a11y-btn active" data-theme="slate" aria-label="Dark Slate Theme" title="Low glare dark slate">Slate</button>
+        <button class="a11y-btn" data-theme="warm" aria-label="Warm Charcoal Theme" title="Warm charcoal background">Warm</button>
+        <button class="a11y-btn" data-theme="contrast" aria-label="High Contrast Theme" title="Maximum clarity contrast">High-Con</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Landmark -->
+  <main id="main-content">
+    
+    <!-- Hero Section -->
+    <section id="overview" class="hero-section" aria-labelledby="hero-title">
+      <div class="container hero-layout">
+        <div>
+          <!-- Acronym Explanation Pill -->
+          <div class="acronym-pill" aria-label="ArCHi Acronym Breakdown">
+            <span><strong class="highlight-white">A</strong>RTIFICIAL</span>
+            <span class="dot">•</span>
+            <span><strong class="highlight-orange">R</strong>ESTORATIVE</span>
+            <span class="dot">•</span>
+            <span><strong class="highlight-white">C</strong>OMPUTER</span>
+            <span class="dot">•</span>
+            <span><strong class="highlight-white">H</strong>ARNESS</span>
+            <span class="dot">•</span>
+            <span><strong class="highlight-orange">I</strong>NTELLIGENCE</span>
+          </div>
+
+          <h1 id="hero-title" class="hero-title">
+            Restore Desktop Velocity with Private Push-to-Talk.
+          </h1>
+          <p class="hero-subtitle">
+            A local, deterministic voice command harness for <strong>Omarchy</strong> and <strong>Hyprland</strong>.
+            Designed for effortless accessibility, zero cloud telemetry, and millisecond command execution.
+          </p>
+
+          <!-- Quick 1-Line Install Snippet -->
+          <div class="quick-snippet-box">
+            <span class="cmd" id="hero-install-cmd">git clone https://github.com/omarchy/archi.git &amp;&amp; cd archi &amp;&amp; ./install.sh</span>
+            <button class="copy-btn" data-copy-target="hero-install-cmd" aria-label="Copy installation command">
+              📋 <span>Copy</span>
+            </button>
+          </div>
+
+          <div class="hero-actions">
+            <a href="#simulator" class="btn btn-primary">Try Interactive Simulator</a>
+            <a href="logo_animation.html" class="btn btn-secondary">✨ Interactive AʳCHⁱ Lab</a>
+          </div>
+
+          <!-- Trust Badges -->
+          <div class="hero-badges">
+            <span class="badge badge-green">🔒 100% Local &amp; Private</span>
+            <span class="badge badge-amber">🎙️ Push-to-Talk (No Always-On Mic)</span>
+            <span class="badge badge-blue">⚡ Deterministic Argv Routing</span>
+          </div>
+        </div>
+
+        <!-- Hero Visual Banner Card -->
+        <a href="logo_animation.html" class="hero-visual-card" title="Open Interactive Chalkboard Animation Lab" style="text-decoration: none; display: block;">
+          <img src="../media/archi_main_logo_regen.png" alt="ArCHi Chalk Logo: Artificial Restorative Computer Harness Intelligence" class="hero-banner-img">
+          <div class="hero-visual-caption">
+            The Computer Harness Concept: AʳCHⁱ Technical Lockup &middot; Click to launch interactive animation &rarr;
+          </div>
+        </a>
+      </div>
+    </section>
+
+    <!-- Interactive Harness Demo / Playground -->
+    <section id="simulator" class="simulator-section" aria-labelledby="sim-title">
+      <div class="container">
+        <div class="section-intro">
+          <span class="badge badge-amber" style="margin-bottom: 0.75rem;">Interactive Prototype</span>
+          <h2 id="sim-title">Test the Deterministic Harness Flow</h2>
+          <p>Experience how push-to-talk capture, strict allowlist routing, and local Pocket TTS synthesis work together without touching the cloud.</p>
+        </div>
+
+        <div class="simulator-box">
+          <div class="sim-header">
+            <div class="sim-status-lights">
+              <span class="status-dot" id="sim-status-dot"></span>
+              <span id="sim-status-text">Idle — Ready for Push-to-Talk</span>
+            </div>
+            <div style="font-size: 0.8rem; color: var(--text-dim);">
+              Latency Target: <strong>&lt; 150ms</strong>
+            </div>
+          </div>
+
+          <div class="sim-body">
+            <!-- Simulator Controls Pane -->
+            <div class="sim-controls-pane">
+              <div>
+                <h3 style="font-size: 1.15rem; margin-bottom: 0.5rem;">1. Trigger Push-to-Talk</h3>
+                <p style="font-size: 0.88rem; margin-bottom: 1.25rem;">
+                  Hold down the button (or press Space when focused) to simulate voice capture, or click any sample phrase below.
+                </p>
+                
+                <button id="sim-ptt-button" class="ptt-interactive-btn" aria-label="Push to talk button (hold to record)">
+                  <span>🎙️ Push to Talk</span>
+                  <span class="hint">Hold or Click to Speak "read clipboard"</span>
+                </button>
+              </div>
+
+              <!-- Preset test phrases -->
+              <div class="sample-phrases-group">
+                <span class="sample-phrases-label">Or Click a Common Voice Command:</span>
+                <div class="phrase-pill-list">
+                  <button class="phrase-pill" data-phrase="open browser">"open browser"</button>
+                  <button class="phrase-pill" data-phrase="volume up">"volume up"</button>
+                  <button class="phrase-pill" data-phrase="read clipboard">"read clipboard"</button>
+                  <button class="phrase-pill" data-phrase="take screenshot">"take screenshot"</button>
+                  <button class="phrase-pill" data-phrase="next workspace">"next workspace"</button>
+                  <button class="phrase-pill" data-phrase="off record">"off record"</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Simulator Real-time Diagnostics Output Pane -->
+            <div class="sim-output-pane" aria-live="polite">
+              <div class="flow-step">
+                <div class="flow-step-label">
+                  <span>Step 1: Voxtype Capture</span>
+                  <span>Audio &rarr; Transcript</span>
+                </div>
+                <div class="flow-step-content" id="sim-step-transcript">🎙️ "volume up"</div>
+              </div>
+
+              <div class="flow-step">
+                <div class="flow-step-label">
+                  <span>Step 2: Router Matching</span>
+                  <span>commands.toml</span>
+                </div>
+                <div class="flow-step-content" id="sim-step-router">✅ Matched ID: volume_up (Action: run)</div>
+              </div>
+
+              <div class="flow-step">
+                <div class="flow-step-label">
+                  <span>Step 3: Argv Execution</span>
+                  <span>Direct System Call</span>
+                </div>
+                <div class="flow-step-content" id="sim-step-argv">⚙️ Executing: ["omarchy-audio-output-volume", "raise"]</div>
+              </div>
+
+              <div class="flow-step step-tts">
+                <div class="flow-step-label">
+                  <span>Step 4: Local Pocket TTS + OSD</span>
+                  <span>PipeWire Stream Ducking</span>
+                </div>
+                <div class="flow-step-content" id="sim-step-tts">🔊 Pocket TTS: "Volume up." [PipeWire ducking applied]</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Core Features Section -->
+    <section id="features" class="features-section" aria-labelledby="features-title">
+      <div class="container">
+        <div class="section-intro">
+          <h2 id="features-title">Designed for Accessibility, Built for Speed</h2>
+          <p>ArCHi removes friction from desktop computing with clean architectural boundaries and complete user agency.</p>
+        </div>
+
+        <div class="grid-3">
+          <!-- Card 1 -->
+          <article class="feature-card">
+            <div class="feature-icon-wrapper" aria-hidden="true">🛡️</div>
+            <h3>Push-to-Talk Privacy</h3>
+            <p>
+              ArCHi is deliberately <em>not</em> an always-listening assistant. The microphone is opened strictly during an explicitly triggered push-to-talk session.
+            </p>
+          </article>
+
+          <!-- Card 2 -->
+          <article class="feature-card">
+            <div class="feature-icon-wrapper" aria-hidden="true">⚡</div>
+            <h3>Deterministic &amp; Allowlisted</h3>
+            <p>
+              Zero hallucinations. Trigger phrases map to immutable <code>argv</code> arrays defined in your trusted <code>commands.toml</code> configuration.
+            </p>
+          </article>
+
+          <!-- Card 3 -->
+          <article class="feature-card">
+            <div class="feature-icon-wrapper" aria-hidden="true">🔊</div>
+            <h3>Independent Speech Volume</h3>
+            <p>
+              ArCHi keeps spoken-response volume separate from your master system volume, automatically ducking other audio streams during speech.
+            </p>
+          </article>
+
+          <!-- Card 4 -->
+          <article class="feature-card">
+            <div class="feature-icon-wrapper" aria-hidden="true">📖</div>
+            <h3>Safe Clipboard Read-Aloud</h3>
+            <p>
+              Listen to selected articles or copied snippets on demand. Clipboard content is validated for UTF-8 safety and never stored in diagnostic logs.
+            </p>
+          </article>
+
+          <!-- Card 5 -->
+          <article class="feature-card">
+            <div class="feature-icon-wrapper" aria-hidden="true">🕵️</div>
+            <h3>Local Diagnostic Logging</h3>
+            <p>
+              Full transparent visibility with an immediate "off record" voice command to pause logging before handling confidential information.
+            </p>
+          </article>
+
+          <!-- Card 6 -->
+          <article class="feature-card">
+            <div class="feature-icon-wrapper" aria-hidden="true">🪟</div>
+            <h3>Omarchy &amp; Hyprland Native</h3>
+            <p>
+              Seamless window focusing, workspace switching, screenshot triggers, and OSD volume integration built for the Omarchy desktop stack.
+            </p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- Knowledge Base & Command Registry -->
+    <section id="commands" class="catalog-section" aria-labelledby="catalog-title">
+      <div class="container">
+        <div class="section-intro">
+          <h2 id="catalog-title">Command Registry &amp; Knowledge Base</h2>
+          <p>
+            Browse the active command allowlist. Easily search trigger phrases or filter by feature area.
+          </p>
+        </div>
+
+        <!-- Search and Filters -->
+        <div class="catalog-search-bar">
+          <div class="search-input-wrapper">
+            <span class="search-icon" aria-hidden="true">🔍</span>
+            <input type="search" id="command-search-input" class="search-input" placeholder="Search commands, phrases, or actions (e.g. volume, browser, close)..." aria-label="Search command registry">
+          </div>
+
+          <div class="category-filter-chips" role="radiogroup" aria-label="Command Category Filters">
+            <button class="chip-btn active" data-category="all" role="radio" aria-checked="true">All</button>
+            <button class="chip-btn" data-category="apps" role="radio" aria-checked="false">Apps</button>
+            <button class="chip-btn" data-category="audio" role="radio" aria-checked="false">Audio &amp; Volume</button>
+            <button class="chip-btn" data-category="windows" role="radio" aria-checked="false">Windows &amp; Workspaces</button>
+            <button class="chip-btn" data-category="readout" role="radio" aria-checked="false">Clipboard &amp; TTS</button>
+            <button class="chip-btn" data-category="system" role="radio" aria-checked="false">System &amp; Privacy</button>
+          </div>
+        </div>
+
+        <div style="margin-bottom: 1rem; font-size: 0.85rem; color: var(--text-dim); display: flex; justify-content: space-between;">
+          <span>Showing allowlisted commands <span id="command-count-span"></span></span>
+          <span>Source: <code>config/commands.toml</code></span>
+        </div>
+
+        <!-- Dynamic Command Grid -->
+        <div class="command-grid" id="command-grid-container" role="feed" aria-busy="false">
+          <!-- Populated by JavaScript -->
+        </div>
+      </div>
+    </section>
+
+    <!-- Architecture & Flow Section -->
+    <section id="architecture" class="arch-section" aria-labelledby="arch-title">
+      <div class="container">
+        <div class="section-intro">
+          <h2 id="arch-title">The "Harness" Architectural Model</h2>
+          <p>ArCHi connects your existing desktop capabilities with strict trust boundaries and explicit execution guarantees.</p>
+        </div>
+
+        <div class="arch-flow-diagram">
+          <div class="arch-node">
+            <div class="arch-node-number">1</div>
+            <h4>Push-to-Talk</h4>
+            <p style="font-size: 0.84rem; margin-top: 0.5rem;">Voxtype opens microphone solely during button press.</p>
+          </div>
+
+          <div class="arch-node">
+            <div class="arch-node-number">2</div>
+            <h4>Deterministic Router</h4>
+            <p style="font-size: 0.84rem; margin-top: 0.5rem;">Matches transcript against trusted <code>commands.toml</code> allowlist.</p>
+          </div>
+
+          <div class="arch-node">
+            <div class="arch-node-number">3</div>
+            <h4>Direct Argv Execution</h4>
+            <p style="font-size: 0.84rem; margin-top: 0.5rem;">Launches binaries directly as argv arrays without shell interpolation.</p>
+          </div>
+
+          <div class="arch-node">
+            <div class="arch-node-number">4</div>
+            <h4>Local Pocket TTS</h4>
+            <p style="font-size: 0.84rem; margin-top: 0.5rem;">Spoken replies played through PipeWire with automatic stream ducking.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Quickstart & Docs Tabs -->
+    <section id="quickstart" class="docs-section" aria-labelledby="docs-title">
+      <div class="container">
+        <div class="section-intro">
+          <h2 id="docs-title">Quickstart &amp; Setup Guide</h2>
+          <p>Get ArCHi up and running in your Omarchy / Hyprland environment in under two minutes.</p>
+        </div>
+
+        <div class="docs-tabs" role="tablist" aria-label="Documentation Categories">
+          <button class="tab-nav-btn active" role="tab" aria-selected="true" data-tab-target="tab-install" id="tab-btn-install">1. Installation</button>
+          <button class="tab-nav-btn" role="tab" aria-selected="false" data-tab-target="tab-prereqs" id="tab-btn-prereqs">2. Prerequisites</button>
+          <button class="tab-nav-btn" role="tab" aria-selected="false" data-tab-target="tab-config" id="tab-btn-config">3. Configuration &amp; Bindings</button>
+        </div>
+
+        <!-- Tab 1: Install -->
+        <div id="tab-install" class="tab-pane active" role="tabpanel" aria-labelledby="tab-btn-install">
+          <div class="code-block-wrapper">
+            <div class="code-block-header">
+              <span>Terminal — One-line Installation</span>
+              <button class="copy-btn" data-copy-target="code-install-box">📋 Copy</button>
+            </div>
+            <pre class="code-block-content" id="code-install-box"><code># Clone repository and run the safe installer
+git clone https://github.com/omarchy/archi.git
+cd archi
+./install.sh
+
+# To refresh an existing registry with current defaults (with backup):
+./install.sh --refresh-registry</code></pre>
+          </div>
+          <p style="font-size: 0.9rem; color: var(--text-muted);">
+            Installs helper scripts to <code>~/.local/bin</code> and data files to <code>~/.local/share/archi</code> without overwriting existing customizations.
+          </p>
+        </div>
+
+        <!-- Tab 2: Prerequisites -->
+        <div id="tab-prereqs" class="tab-pane" role="tabpanel" aria-labelledby="tab-btn-prereqs">
+          <div class="code-block-wrapper">
+            <div class="code-block-header">
+              <span>Required System Packages &amp; Tools</span>
+              <button class="copy-btn" data-copy-target="code-prereqs-box">📋 Copy</button>
+            </div>
+            <pre class="code-block-content" id="code-prereqs-box"><code># Core Desktop Stack
+• Omarchy / Hyprland Wayland Compositor
+• Python 3.11+
+• Voxtype (for push-to-talk audio capture)
+• PipeWire tools: pw-play, wpctl, pw-dump
+• Utilities: curl, jq, wl-clipboard, hyprctl
+• Local Pocket TTS endpoint (default: http://127.0.0.1:8000/tts)</code></pre>
+          </div>
+        </div>
+
+        <!-- Tab 3: Config -->
+        <div id="tab-config" class="tab-pane" role="tabpanel" aria-labelledby="tab-btn-config">
+          <div class="code-block-wrapper">
+            <div class="code-block-header">
+              <span>Hyprland Push-to-Talk Keybinding Example (~/.config/hypr/hyprland.conf)</span>
+              <button class="copy-btn" data-copy-target="code-config-box">📋 Copy</button>
+            </div>
+            <pre class="code-block-content" id="code-config-box"><code># Bind Push-to-Talk to SUPER + SPACE (or your preferred key)
+bind = $mainMod, SPACE, exec, archi-control-start
+bindr = $mainMod, SPACE, exec, archi-control-stop</code></pre>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Site Footer -->
+  <footer class="site-footer" role="contentinfo">
+    <div class="container">
+      <div class="footer-content">
+        <div class="footer-col">
+          <div class="brand-title" style="margin-bottom: 0.75rem;">
+            A<span class="accent-r">r</span>CH<span class="accent-i">i</span>
+          </div>
+          <p style="font-size: 0.88rem; max-width: 420px;">
+            Artificial Restorative Computer Harness Intelligence — A privacy-focused, accessible desktop command layer for Omarchy &amp; Hyprland.
+          </p>
+        </div>
+
+        <div class="footer-col">
+          <h4>Navigation</h4>
+          <ul class="footer-links">
+            <li><a href="#overview">Overview</a></li>
+            <li><a href="#simulator">Playground</a></li>
+            <li><a href="#commands">Command Catalog</a></li>
+            <li><a href="#quickstart">Quickstart Docs</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-col">
+          <h4>Ecosystem</h4>
+          <ul class="footer-links">
+            <li><a href="https://github.com/omarchy" target="_blank" rel="noopener">Omarchy Project</a></li>
+            <li><a href="https://hyprland.org" target="_blank" rel="noopener">Hyprland Compositor</a></li>
+            <li><a href="https://pipewire.org" target="_blank" rel="noopener">PipeWire Audio</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <span>© Concept Demo Mockup for ArCHi • Clean Architecture Demo</span>
+        <span>Built with low-glare high-contrast accessibility standards.</span>
+      </div>
+    </div>
+  </footer>
+
+  <script src="js/app.js"></script>
+</body>
+</html>

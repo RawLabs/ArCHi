@@ -1,57 +1,142 @@
 # ArCHi
 
-**ArCHi — Artificial Restorative Computer Harness Intelligence** — is a local,
-deterministic, push-to-talk desktop command layer for Omarchy and Hyprland. It
-is intended to make common desktop actions easier to access without sending a
-command transcript to a cloud service.
+<p align="center">
+  <img src="media/archi_main_logo_regen.png" alt="ArCHi — Artificial Restorative Computer Harness Intelligence" width="720">
+</p>
 
-ArCHi is the normal product name. The expanded name is used for formal project
-descriptions and reinforces its role:
+**ArCHi — Artificial Restorative Computer Harness Intelligence** ($A^r \cdot CH^i$) — is a local,
+deterministic accessibility control plane for Linux. It is intended to
+coordinate the accessibility and desktop services a person already has, choose
+the safest available way to satisfy a request, and return the result through
+the person's preferred interaction channels.
 
-- **Artificial** — the AI layer.
-- **Restorative** — restoring or compensating for lost or difficult computer
-  interaction.
-- **Computer Harness** — connecting existing desktop capabilities instead of
-  replacing them.
-- **Intelligence** — the reasoning and orchestration layer.
+ArCHi is the everyday brand name, while the conceptual reading **AʳCHⁱ** encapsulates its three architectural pillars:
 
-The “Harness” concept also guides the visual language: connected components,
-structural lines, bridging, support, and attachment points. It reinforces the
-architectural arch without relying on a literal accessibility symbol.
+1. **01. The Computer Harness — A·C·H:** Linux already has a remarkable collection of tools: window controls, audio systems, accessibility services, input devices, magnifiers, and speech tools. ArCHi's Computer Harness connects to what is already available on your system, learns where the useful pieces are, and gives them a common place to work from. No need to replace Linux—the penguin was here first.
+2. **02. Restorative Intelligence — r·i:** Restorative Intelligence turns human intent into an action the computer understands. Spoken commands, dictated instructions, keyboard actions, pointer movements, or accessibility controls all represent the same thing: intent. Less hunting through menus, less mouse mileage, and considerably less finger gymnastics.
+3. **03. ArCHi:** Put the two together and you get ArCHi: a harness that understands the Linux system beneath it, and an intelligence that understands the person in front of it. Magnification beside hands-free control, dictation beyond typing—because sometimes the accessibility problem isn't that the tool doesn't exist; it's that the tools won't talk to each other.
 
-ArCHi is deliberately **not** an always-listening assistant. The microphone is
-opened only during an explicitly started push-to-talk command.
+ArCHi is not intended to become another screen reader, speech engine, braille
+driver, or general-purpose desktop agent. Those systems remain the experts.
+ArCHi asks for capabilities such as `action.activate`, `output.speak`, or
+`context.focused_control` and routes each request to an installed provider.
 
-## What it does
+## Current implementation
+
+The working prototype is the first vertical slice of that control plane:
+
+```text
+Voxtype explicit capture
+        |
+deterministic allowlisted router
+        |
+capability + desktop adapter boundary
+        |
+Omarchy / Hyprland actions + Pocket TTS speech
+```
+
+It currently:
 
 - routes recognized phrases through a small allowlisted command registry;
+- discovers installed applications from the live XDG desktop-entry registry,
+  enabling commands such as `open cliamp` and `close cliamp` without adding
+  per-application configuration. App names may contain spaces, may be spoken
+  as separate letters (`open c l i a m p`), and accept a conservative q/c/k
+  phonetic equivalence;
+- stops and submits capture with the same `Super+R` toggle or the active-only
+  spoken terminator “ArCHi stop”;
 - provides spoken responses through a local Pocket TTS-compatible endpoint;
-- keeps ArCHi's spoken-response volume separate from the system volume and
-  shows an Omarchy OSD volume indicator;
+- keeps ArCHi's spoken-response volume separate from system volume and shows
+  an Omarchy OSD volume indicator;
 - supports read-aloud, system audio, windows, screenshots, and workspace
-  actions through an Omarchy profile;
+  actions through the `omarchy.hyprland` adapter;
 - records local command diagnostics by default, with an “off record” command;
-- keeps the intent-parser integration observational: it never chooses commands.
+- shows short, transparent command-status overlays through the selected desktop
+  adapter. On Omarchy these use `omarchy-osd`, not the system notification
+  center; set `ARCHI_FEEDBACK=off` to disable them;
+- keeps the optional intent-parser integration observational: it never chooses
+  commands.
 
-## Status
+This slice now has its first capability/adapter boundary, but it does not yet
+contain the general multi-provider broker, AT-SPI integration, Speech
+Dispatcher, braille, portals/libei, or vision fallback. See the
+[platform support policy](docs/SUPPORT.md) and [roadmap](docs/ROADMAP.md).
 
-This is an early Omarchy-focused project. It has no wake word, no background
-microphone listener, and no network requirement beyond whichever TTS endpoint a
-user chooses to configure.
+## Direction
 
-## Requirements
+The target architecture separates five provider roles:
+
+```text
+input -> normalized intent -> context + policy -> action
+                                      |
+                               output + feedback
+```
+
+- `InputProvider` turns voice, keys, switches, braille keys, gestures, or
+  future sensors into normalized input events.
+- `ContextProvider` reports relevant semantic or desktop state without taking
+  action.
+- `ActionProvider` performs a narrowly described, policy-approved operation.
+- `OutputProvider` presents requested content through speech, braille,
+  captions, or another channel.
+- `FeedbackProvider` reports short status, confirmation, warning, or failure
+  cues independently of content output.
+
+Providers advertise capabilities; the broker selects among them. Core intent
+must not depend on commands such as `hyprctl`, on a particular synthesizer, or
+on screenshot coordinates. A request such as “activate Save” should prefer a
+semantic accessible action, then an application or compositor-native action,
+and use permissioned pixel/pointer control only as a guarded fallback. If the
+target cannot be established safely, ArCHi asks rather than guesses.
+
+The detailed contracts, fallback rules, and trust boundaries live in the
+[architecture notes](docs/ARCHITECTURE.md).
+
+## Design commitments
+
+- **Integrate before inventing.** Use AT-SPI, Orca, Speech Dispatcher,
+  BRLTTY/BrlAPI, desktop portals, libei, and desktop settings through adapters
+  where they fit.
+- **Capabilities, not implementations.** User intent and profiles do not name
+  a particular desktop command or device backend.
+- **Deterministic by default.** Executable actions remain allowlisted and
+  inspectable. Optional probabilistic components may propose context or intent;
+  they do not silently expand authority.
+- **Semantic before visual.** Prefer the accessibility tree and native
+  application actions over screenshots and coordinate clicks.
+- **Ask rather than guess.** Ambiguity, missing permission, and unavailable
+  capabilities are normal broker outcomes.
+- **User-directed channels.** Profiles describe preferred interaction channels
+  and constraints, not diagnoses.
+- **Explicit activation and consent.** The default input is a deliberate
+  start/stop toggle, and
+  privileged capture or input control must preserve portal/compositor consent.
+- **Local and private by default.** Transcripts, context, and diagnostics stay
+  local unless a user deliberately configures otherwise.
+
+## Beta status
+
+ArCHi `0.1.0b1` is in beta testing on Omarchy/Hyprland. The beta covers the
+explicit voice-command flow, dynamic installed-app routing, action execution,
+local diagnostics, HassIL shadow comparison, and transparent status feedback.
+It has no wake word, background microphone listener, voice-controlled
+dictation, general capability broker, or tested non-Omarchy desktop adapter.
+See [beta operations](docs/BETA.md) for the supported scope and test loop.
+
+## Requirements for the current prototype
 
 - Omarchy / Hyprland
 - Python 3.11+
-- [Voxtype](https://github.com/seriousm4x/voxtype) for push-to-talk capture
-- PipeWire tools: `pw-play`, `wpctl`, and `pw-dump`
+- [Voxtype](https://github.com/peteonrails/voxtype) for local voice capture
+- PipeWire tools: `pw-play`, `pw-record`, `wpctl`, and `pw-dump`
 - `curl`, `jq`, `wl-clipboard`, and `hyprctl`
-- a Pocket TTS-compatible HTTP endpoint (defaults to `http://127.0.0.1:8000/tts`)
+- a Pocket TTS-compatible HTTP endpoint (defaults to
+  `http://127.0.0.1:8000/tts`)
 
 `hassil` is optional. When installed, it only compares parsing results for
 diagnostics; it does not execute commands.
 
-## Install locally
+## Install the current prototype locally
 
 Review the files first, then run:
 
@@ -61,7 +146,8 @@ Review the files first, then run:
 
 This installs scripts to `~/.local/bin` and ArCHi data to
 `~/.local/share/archi`. It does not overwrite an existing command registry and
-does not add keybindings automatically. See [installation notes](docs/INSTALL.md).
+does not add keybindings automatically. See the
+[installation notes](docs/INSTALL.md).
 
 Every install refreshes `commands.default.toml` for comparison. To replace an
 existing active registry with the current defaults, while preserving a
@@ -69,17 +155,26 @@ timestamped backup, run `./install.sh --refresh-registry`.
 
 Useful override variables:
 
-- `ARCHI_HOME`: installed ArCHi data directory, default `~/.local/share/archi`;
+- `ARCHI_HOME`: installed ArCHi data directory, default
+  `~/.local/share/archi`;
 - `ARCHI_BIN_DIR`: helper script directory, default `~/.local/bin`;
 - `ARCHI_COMMANDS_PATH`: command registry path;
+- `ARCHI_APPLICATION_DIRS`: optional colon-separated desktop-entry directories
+  used instead of the standard XDG, Flatpak, and Snap locations;
+- `ARCHI_DESKTOP_ADAPTER`: desktop integration ID, currently `omarchy` or
+  `omarchy.hyprland`;
 - `ARCHI_INTENTS_PATH`: independent HassIL diagnostic grammar path;
 - `ARCHI_LOG_PATH`: command diagnostic log path;
+- `ARCHI_FEEDBACK`: `minimal` (default) or `off` for transient visual command
+  feedback;
 - `ARCHI_TTS_SAY`: speech helper used by the router;
 - `ARCHI_TRANSCRIPT_WAIT_TICKS`: transcript wait in tenths of a second,
-  default `50` (five seconds);
+  default `1200` (120 seconds, with immediate completion when ready);
+- `ARCHI_MAX_RECORDING_SECONDS`: hard recording limit, default and maximum
+  `120`;
 - `POCKET_TTS_URL`, `POCKET_TTS_VOICE`, `POCKET_TTS_VOICE_FILE`, and
   `POCKET_TTS_VOLUME`: speech endpoint, voice, voice sample, and volume;
-- `POCKET_TTS_TIMEOUT_SECONDS`: timeout for each TTS request, default `15`;
+- `POCKET_TTS_TIMEOUT_SECONDS`: timeout for each TTS request, default `60`;
 - `POCKET_TTS_DUCK_FACTOR`: volume multiplier for other playback while ArCHi
   speaks, default `0.25`.
 
@@ -96,8 +191,10 @@ uv pip install --target "${ARCHI_HOME:-$HOME/.local/share/archi}/vendor" 'hassil
 
 ## Safety and privacy
 
-ArCHi runs command definitions from `config/commands.toml`; commands are argv
-arrays, never shell strings. Treat that registry as trusted configuration.
+ArCHi runs operational capability definitions from `config/commands.toml` and
+discovers applications from desktop entries already trusted by the Linux
+application launcher. Machine commands are owned by the selected adapter;
+remaining helper actions use argv arrays, never shell strings.
 
 The default log contains command transcripts and desktop context. Use “off
 record” before sensitive work, or set `ARCHI_LOG_PATH` to a location you
@@ -107,19 +204,23 @@ logged.
 ## Project layout
 
 ```text
-src/archi/       deterministic command router
+src/archi/       router, XDG application registry, and adapter contracts
+src/archi/adapters/  tested machine-specific desktop integrations
 config/          allowlisted command profile and diagnostic intent grammar
-scripts/         push-to-talk, TTS, and utility entry points
-docs/            installation and architecture notes
-tests/           router behavior tests
+scripts/         capture control, verbal stop, TTS, and utility entry points
+docs/            architecture, roadmap, installation, and testing notes
+tests/           current prototype behavior tests
 ```
 
 See the [testing cheat sheet](docs/TESTING.md) for the current key map, every
-accepted phrase, and the next-phase test matrix. See
-[architecture notes](docs/ARCHITECTURE.md) for the runtime flow and trust
-boundaries.
+accepted phrase, and the prototype test matrix. See the
+[architecture notes](docs/ARCHITECTURE.md) for current and target runtime flows.
+The [platform support policy](docs/SUPPORT.md) defines tested compatibility.
+The first planned provider-selection plugin is specified in
+[the magnifier PoC](docs/MAGNIFIER_PLUGIN_POC.md).
 
-## Before publishing
+## Before release beyond beta
 
-Choose a license, replace user-specific command examples as needed, test on a
-fresh Omarchy account, and add contribution and security guidance.
+Choose a license, add contribution and security guidance, test on a fresh
+Omarchy account, validate a second desktop adapter, and package the project for
+the supported distributions.
