@@ -6,4 +6,6 @@ dist/
 build/
 *.egg-info/
 assets/voice.wav
+media/archi_voice_model.wav
+voice_preview_*.mp3
 *.jsonl

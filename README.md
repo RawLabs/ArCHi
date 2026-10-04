@@ -178,9 +178,16 @@ Useful override variables:
 - `POCKET_TTS_DUCK_FACTOR`: volume multiplier for other playback while ArCHi
   speaks, default `0.25`.
 
-The custom voice file is optional. Put a private sample at `assets/voice.wav`
-before installing, or set `POCKET_TTS_VOICE_FILE`; otherwise ArCHi requests the
-configured named voice, which defaults to `alba`.
+ArCHi uses Pocket TTS's named voice `alba` by default. No custom voice sample
+or ElevenLabs account is needed. Set `POCKET_TTS_VOICE` to choose another named
+voice supported by your local endpoint.
+
+For an optional custom voice, browse the
+[ElevenLabs Voice Library](https://elevenlabs.io/app/voice-library) for
+“Savvy — warm, grounded & natural” or another voice. Download an audio sample
+you have permission to use as a local voice reference, then follow the
+[custom voice setup](docs/INSTALL.md#optional-custom-voice). Samples are supplied
+by the user and are not bundled with ArCHi.
 
 To enable optional HassIL shadow comparison without modifying the system
 Python environment:

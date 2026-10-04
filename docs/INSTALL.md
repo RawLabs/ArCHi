@@ -98,10 +98,36 @@ binding file.
 
 ## Optional integrations
 
-Place a private voice sample at `assets/voice.wav` before installation, or set
-`POCKET_TTS_VOICE_FILE`. If no sample is present, the named voice configured by
-`POCKET_TTS_VOICE` is used. The installer migrates a legacy
-`$ARCHI_HOME/savvy.wav` sample into the private `assets/voice.wav` location.
+### Optional custom voice
+
+The default Pocket TTS voice is `alba`; a fresh install needs no downloaded
+sample. Set `POCKET_TTS_VOICE` to select another named voice supported by your
+local endpoint.
+
+To choose your own sample, open the
+[ElevenLabs Voice Library](https://elevenlabs.io/app/voice-library) and search
+for “Savvy — warm, grounded & natural” or another voice. Download a sample you
+have permission to use as a local voice reference. ArCHi does not bundle these
+samples or download them automatically.
+
+If the download is MP3, convert it to WAV using `ffmpeg`:
+
+```bash
+mkdir -p assets
+ffmpeg -i "/path/to/downloaded-sample.mp3" -ac 1 -ar 24000 assets/voice.wav
+./install.sh
+```
+
+Alternatively, set `POCKET_TTS_VOICE_FILE` to an existing WAV sample's absolute
+path in the environment that launches ArCHi. A sample takes precedence over
+the named voice. Keep it local; `assets/voice.wav` is excluded from Git.
+To return to the default voice, unset `POCKET_TTS_VOICE_FILE` and
+`POCKET_TTS_VOICE`, and remove the installed sample at
+`${ARCHI_HOME:-$HOME/.local/share/archi}/assets/voice.wav`.
+The installer also migrates a legacy `$ARCHI_HOME/savvy.wav` sample into that
+location; remove the legacy sample too if present when reverting to default.
+
+### Optional intent diagnostics
 
 Install HassIL into ArCHi's private vendor directory to enable shadow parsing:
 
