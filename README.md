@@ -12,31 +12,64 @@
   <strong><a href="https://rawlabs.github.io/ArCHi/site/concept_film.html">▶ Watch the concept film</a></strong>
 </p>
 
-The narrated introduction explains the name and idea behind ArCHi. The
-102-second concept film shows the path from a spoken request to a desktop
-action. Both are concept presentations; the film includes proposed
-confirmation behavior beyond the current beta.
+ArCHi is a local voice assistant for **Omarchy/Hyprland**. Speak a short
+command to open an app, adjust zoom or volume, read the clipboard, or control
+a window. Speech recognition, routing, and speech output run locally.
 
-**ArCHi — Artificial Restorative Computer Harness Intelligence** ($A^r \cdot CH^i$) — is a local,
-deterministic voice assistant for Omarchy. It turns short, natural requests into
-existing desktop actions, keeps enough context for follow-ups, and reports the
-result. Recognition and speech run locally; command selection uses an inspectable
-allowlist and requires no chatbot or paid API.
+## Quick start
 
-ArCHi is the everyday brand name, while the conceptual reading **AʳCHⁱ** encapsulates its three architectural pillars:
+You need Omarchy/Hyprland, Python 3.11+, a configured
+[Voxtype](https://github.com/peteonrails/voxtype) installation, and a local
+speech backend. See [requirements](#requirements-for-the-current-prototype)
+for the full tool list and hardware guidance. The installer copies ArCHi;
+it does not install Voxtype or a speech service.
 
-1. **01. The Computer Harness — A·C·H:** Linux already has a remarkable collection of tools: window controls, audio systems, accessibility services, input devices, magnifiers, and speech tools. ArCHi's Computer Harness connects to what is already available on your system, learns where the useful pieces are, and gives them a common place to work from. No need to replace Linux—the penguin was here first.
-2. **02. Restorative Intelligence — r·i:** Restorative Intelligence turns human intent into an action the computer understands. Spoken commands, dictated instructions, keyboard actions, pointer movements, or accessibility controls all represent the same thing: intent. Less hunting through menus, less mouse mileage, and considerably less finger gymnastics.
-3. **03. ArCHi:** Put the two together and you get ArCHi: a harness that understands the Linux system beneath it, and an intelligence that understands the person in front of it. Magnification beside hands-free control, dictation beyond typing—because sometimes the accessibility problem isn't that the tool doesn't exist; it's that the tools won't talk to each other.
+```bash
+git clone https://github.com/RawLabs/ArCHi.git
+cd ArCHi
+./install.sh
+~/.local/bin/archi-doctor
+```
 
-ArCHi is not intended to become another screen reader, speech engine, braille
-driver, or general-purpose desktop agent. Those systems remain the experts.
-ArCHi asks for capabilities such as `action.activate`, `output.speak`, or
-`context.focused_control` and routes each request to an installed provider.
+Add the `Super+R` toggle and `Escape` cancel bindings from the
+[installation guide](docs/INSTALL.md), then reload Hyprland. Keybindings are
+configured manually. Keep `~/.local/bin` on your `PATH` so they can find the
+installed helpers.
+
+## Use ArCHi
+
+1. Press **Super+R** to start listening.
+2. Say a command from the examples below.
+3. Press **Super+R** again, or say **“ArCHi stop”**, to submit.
+   Press **Escape** while listening to cancel without running it.
+4. ArCHi shows the recognized command and reports the result.
+
+| Say | Result |
+| --- | --- |
+| `open downloads` | Opens your Downloads folder |
+| `open cliamp` | Opens cliamp if it is installed; use another installed app's name too |
+| `close cliamp` | Requests that app's window close; reports if it still needs attention |
+| `zoom` → `more` → `less` | Adjusts native screen zoom with short follow-ups |
+| `zoom out` | Resets zoom to normal |
+| `volume up` / `volume down` | Adjusts system volume |
+| `read clipboard` | Reads clipboard text aloud |
+| `stop speaking` | Stops Pocket TTS playback |
+| `off record` / `logging on` | Pauses or resumes local diagnostic logging |
+
+Recording submits automatically after 120 seconds. ArCHi listens only during
+an explicitly started capture. Logs include transcripts and desktop context
+by default; say **“off record”** before sensitive work.
+
+See [voice controls](docs/VOICE_CONTROLS.md) for follow-ups and
+[the command reference](docs/TESTING.md) for the full phrase list. Unknown or
+ambiguous commands perform no desktop action.
+
+The presentations above explain the project idea. The concept film includes
+proposed confirmation behavior beyond the current beta.
 
 ## Current implementation
 
-The working prototype is the first vertical slice of that control plane:
+The current beta follows this command path:
 
 ```text
 Voxtype explicit capture
@@ -78,6 +111,19 @@ This slice now has its first capability/adapter boundary, but it does not yet
 contain the general multi-provider broker, AT-SPI integration, Speech
 Dispatcher, braille, portals/libei, or vision fallback. See the
 [platform support policy](docs/SUPPORT.md) and [roadmap](docs/ROADMAP.md).
+
+## The idea behind ArCHi
+
+ArCHi is the everyday brand name, while the conceptual reading **AʳCHⁱ** encapsulates its three architectural pillars:
+
+1. **01. The Computer Harness — A·C·H:** Linux already has a remarkable collection of tools: window controls, audio systems, accessibility services, input devices, magnifiers, and speech tools. ArCHi's Computer Harness connects to what is already available on your system, learns where the useful pieces are, and gives them a common place to work from. No need to replace Linux—the penguin was here first.
+2. **02. Restorative Intelligence — r·i:** Restorative Intelligence turns human intent into an action the computer understands. Spoken commands, dictated instructions, keyboard actions, pointer movements, or accessibility controls all represent the same thing: intent. Less hunting through menus, less mouse mileage, and considerably less finger gymnastics.
+3. **03. ArCHi:** Put the two together and you get ArCHi: a harness that understands the Linux system beneath it, and an intelligence that understands the person in front of it. Magnification beside hands-free control, dictation beyond typing—because sometimes the accessibility problem isn't that the tool doesn't exist; it's that the tools won't talk to each other.
+
+ArCHi is not intended to become another screen reader, speech engine, braille
+driver, or general-purpose desktop agent. Those systems remain the experts.
+ArCHi asks for capabilities such as `action.activate`, `output.speak`, or
+`context.focused_control` and routes each request to an installed provider.
 
 ## Direction
 
@@ -176,24 +222,12 @@ The profile is advisory: it never prevents use of a configured local backend.
 `hassil` is optional. When installed, it only compares parsing results for
 diagnostics; it does not execute commands.
 
-## Install the current prototype locally
+## Configuration and voice options
 
-Review the files first, then run:
-
-```bash
-git clone https://github.com/RawLabs/ArCHi.git
-cd ArCHi
-./install.sh
-```
-
-This installs scripts to `~/.local/bin` and ArCHi data to
-`~/.local/share/archi`. It does not overwrite an existing command registry and
-does not add keybindings automatically. See the
-[installation notes](docs/INSTALL.md).
-
-Every install refreshes `commands.default.toml` for comparison. To replace an
-existing active registry with the current defaults, while preserving a
-timestamped backup, run `./install.sh --refresh-registry`.
+The source installer puts helpers in `~/.local/bin` and runtime data in
+`~/.local/share/archi`. It preserves your active command registry. To replace
+it with current defaults and keep a timestamped backup, run
+`./install.sh --refresh-registry`.
 
 Useful override variables:
 
