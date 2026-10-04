@@ -1,0 +1,444 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#10110f">
+  <meta name="description" content="ArCHi concept film: a calm, local path from spoken intent to desktop action.">
+  <title>ArCHi — A Shorter Path</title>
+  <link rel="icon" type="image/png" href="../media/archi_favicon_regen.png">
+  <style>
+    :root {
+      --ink: #10110f;
+      --paper: #f1efe7;
+      --paper-dim: #aaa99f;
+      --orange: #f47a2a;
+      --orange-soft: #ffad75;
+      --sage: #9eb495;
+      --line: rgba(241, 239, 231, .13);
+      --ease: cubic-bezier(.2, .8, .2, 1);
+    }
+    * { box-sizing: border-box; }
+    html { background: var(--ink); }
+    body {
+      margin: 0;
+      min-width: 320px;
+      min-height: 100vh;
+      color: var(--paper);
+      background:
+        radial-gradient(circle at 12% -10%, rgba(244, 122, 42, .16), transparent 34rem),
+        radial-gradient(circle at 90% 112%, rgba(158, 180, 149, .1), transparent 32rem),
+        #10110f;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    button, input { font: inherit; }
+    button { color: inherit; }
+    button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid var(--orange-soft); outline-offset: 3px; }
+    .shell { width: min(1180px, calc(100% - 40px)); margin: 0 auto; padding: 30px 0 34px; }
+    .masthead { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin-bottom: 18px; }
+    .brand-lockup { display: flex; align-items: center; gap: 12px; }
+    .brand-mark { width: 38px; height: 38px; object-fit: contain; }
+    .eyebrow { margin: 0 0 4px; color: var(--orange-soft); font: 700 10px/1.2 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; letter-spacing: .18em; text-transform: uppercase; }
+    h1 { margin: 0; font-size: clamp(20px, 2vw, 28px); line-height: 1; letter-spacing: -.04em; }
+    h1 span { color: var(--orange); }
+    .voice-cast { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+    .voice-chip { display: flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 12px; color: var(--paper-dim); background: rgba(255,255,255,.035); border: 1px solid var(--line); border-radius: 999px; font-size: 11px; }
+    .voice-chip strong { color: var(--paper); font-weight: 650; }
+    .voice-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--orange); }
+    .voice-chip.user .voice-dot { background: #8aa9c4; }
+    .voice-chip.archi .voice-dot { background: var(--sage); }
+
+    .film-frame { position: relative; overflow: hidden; aspect-ratio: 16/9; min-height: 490px; background: #0a0b09; border: 1px solid rgba(255,255,255,.16); border-radius: 20px; box-shadow: 0 28px 80px rgba(0,0,0,.48); isolation: isolate; }
+    .film-frame::after { content: ""; position: absolute; inset: 0; z-index: 20; pointer-events: none; background: radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,.34) 100%); box-shadow: inset 0 0 0 1px rgba(255,255,255,.035); }
+    .desktop { position: absolute; inset: 0; overflow: hidden; background: linear-gradient(145deg, rgba(15,17,13,.22), rgba(15,17,13,.74)), radial-gradient(ellipse at 42% 44%, #67745f 0, #333c31 34%, #161b16 76%); }
+    .desktop::before { content: ""; position: absolute; width: 56%; aspect-ratio: 1; left: 20%; top: -16%; opacity: .18; border: 1px solid rgba(241,239,231,.5); border-radius: 43% 57% 58% 42% / 52% 39% 61% 48%; transform: rotate(18deg); box-shadow: 0 0 90px rgba(241,239,231,.12); }
+    .desktop-bar { position: absolute; top: 12px; left: 50%; z-index: 4; display: flex; align-items: center; justify-content: space-between; width: calc(100% - 24px); height: 34px; padding: 0 12px; color: rgba(241,239,231,.7); background: rgba(12,14,11,.75); border: 1px solid rgba(255,255,255,.09); border-radius: 10px; transform: translateX(-50%); backdrop-filter: blur(18px); font: 600 10px/1 ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .workspaces { display: flex; gap: 6px; }
+    .workspace-pill { display: grid; place-items: center; width: 21px; height: 21px; color: #a9aaa1; border-radius: 6px; transition: color .35s var(--ease), background .35s var(--ease); }
+    .workspace-pill.active { color: #171913; background: var(--paper); }
+    .workspace-pill.occupied { position: relative; }
+    .workspace-pill.occupied::after { content: ""; position: absolute; right: 2px; bottom: 2px; width: 4px; height: 4px; background: var(--orange); border-radius: 50%; box-shadow: 0 0 6px var(--orange); }
+    .sys-tray { display: flex; align-items: center; gap: 12px; }
+    .stage-note { position: absolute; top: 66px; left: 28px; z-index: 3; display: flex; align-items: center; gap: 9px; color: rgba(241,239,231,.62); font: 700 9px/1 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .18em; text-transform: uppercase; }
+    .stage-note::before { content: ""; width: 20px; height: 1px; background: var(--orange); }
+
+    .window { position: absolute; z-index: 2; overflow: hidden; border: 1px solid rgba(255,255,255,.2); border-radius: 12px; box-shadow: 0 24px 48px rgba(0,0,0,.42); transition: opacity .42s var(--ease), transform .42s var(--ease), filter .42s var(--ease); }
+    .window.hidden-window { opacity: 0; transform: scale(.96) translateY(18px); pointer-events: none; }
+    .window.in-background { filter: saturate(.6) brightness(.62); transform: scale(.88) translateX(24%); }
+    .window-titlebar { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; height: 38px; padding: 0 12px; background: #30312f; border-bottom: 1px solid rgba(0,0,0,.45); font-size: 10px; color: #e9e7df; }
+    .traffic { display: flex; gap: 6px; }
+    .traffic i { display: block; width: 8px; height: 8px; border-radius: 50%; background: #6b6d68; }
+    .window-title { font-weight: 650; text-align: center; }
+    .files-window { inset: 18% 14% 16%; background: #242622; }
+    .files-body { display: grid; grid-template-columns: 135px 1fr; height: calc(100% - 38px); }
+    .files-side { padding: 16px 12px; background: #20221f; border-right: 1px solid rgba(255,255,255,.07); }
+    .side-item { padding: 7px 10px; margin-bottom: 3px; border-radius: 6px; color: #999b94; font-size: 10px; }
+    .side-item.active { color: #f2f0e8; background: rgba(244,122,42,.19); }
+    .file-grid { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 14px; align-content: start; padding: 24px; }
+    .file-card { display: grid; justify-items: center; gap: 8px; color: #aeb0a8; font-size: 9px; }
+    .folder { width: 44px; height: 32px; background: #c5a16f; border-radius: 4px 5px 5px 5px; box-shadow: inset 0 -5px rgba(0,0,0,.09); }
+    .folder::before { content: ""; display: block; width: 18px; height: 6px; background: #d7b57d; border-radius: 4px 4px 0 0; transform: translateY(-4px); }
+    .editor-window { inset: 16% 11% 12%; background: #1b1d1b; }
+    .editor-tabs { display: flex; align-items: flex-end; height: 30px; padding-left: 8px; background: #202320; border-bottom: 1px solid #30342f; }
+    .editor-tab { padding: 7px 13px 6px; color: #d8d8d0; background: #2a2d29; border-radius: 6px 6px 0 0; font: 650 9px/1 ui-monospace,SFMono-Regular,Menlo,monospace; }
+    .editor-body { display: grid; grid-template-columns: 38px 1fr; height: calc(100% - 68px); padding-top: 14px; background: #1b1d1b; font: 500 10px/1.8 ui-monospace,SFMono-Regular,Menlo,monospace; }
+    .line-numbers { padding-right: 10px; color: #555b54; text-align: right; border-right: 1px solid #292d28; }
+    .code-sheet { padding-left: 16px; color: #c9cdc4; }
+    .code-sheet .orange { color: var(--orange-soft); }
+    .code-sheet .sage { color: #b7cbae; }
+    .code-sheet .dim { color: #72786f; }
+
+    .architecture-panel { position: absolute; top: 24%; left: 50%; z-index: 5; width: min(720px,calc(100% - 70px)); padding: 18px; opacity: 0; transform: translate(-50%,12px); pointer-events: none; transition: opacity .45s var(--ease), transform .45s var(--ease); }
+    .architecture-panel.visible { opacity: 1; transform: translate(-50%,0); }
+    .pipeline { display: grid; grid-template-columns: 1fr auto 1.15fr auto 1fr; align-items: center; gap: 10px; }
+    .pipeline-node { min-height: 70px; display: grid; place-content: center; gap: 5px; padding: 10px; text-align: center; background: rgba(15,17,14,.82); border: 1px solid rgba(255,255,255,.16); border-radius: 12px; backdrop-filter: blur(14px); }
+    .pipeline-node.router { border-color: rgba(244,122,42,.55); box-shadow: 0 0 24px rgba(244,122,42,.1); }
+    .pipeline-node strong { font-size: 12px; }
+    .pipeline-node span { color: #93978f; font: 650 8px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace; text-transform: uppercase; letter-spacing: .08em; }
+    .pipeline-arrow { color: var(--orange-soft); font-size: 18px; }
+    .provider-row { display: flex; justify-content: center; flex-wrap: wrap; gap: 7px; margin-top: 12px; }
+    .provider-chip { padding: 5px 8px; color: #b9bcb4; background: rgba(0,0,0,.25); border: 1px solid rgba(255,255,255,.12); border-radius: 999px; font: 650 8px/1 ui-monospace,SFMono-Regular,Menlo,monospace; }
+    .provider-chip.planned { color: var(--orange-soft); border-style: dashed; border-color: rgba(244,122,42,.55); }
+
+    .community-panel { position: absolute; inset: 18% 12% 21%; z-index: 6; display: grid; place-content: center; justify-items: center; gap: 8px; padding: 14px; text-align: center; opacity: 0; transform: scale(.97); pointer-events: none; transition: opacity .55s var(--ease), transform .55s var(--ease); }
+    .community-panel.visible { opacity: 1; transform: scale(1); }
+    .community-mark { width: 54px; height: 54px; object-fit: contain; filter: drop-shadow(0 0 20px rgba(244,122,42,.2)); }
+    .community-panel h2 { max-width: 660px; margin: 0; font-size: clamp(27px,4.3vw,46px); line-height: .98; letter-spacing: -.055em; }
+    .community-panel h2 span { color: var(--orange); }
+    .community-panel p { max-width: 540px; margin: 0; color: #b8bbb2; font-size: clamp(11px,1.4vw,15px); line-height: 1.55; }
+    .community-invite { margin-top: 4px; padding: 7px 12px; color: #171813; background: var(--paper); border-radius: 999px; font: 800 9px/1 ui-monospace,SFMono-Regular,Menlo,monospace; letter-spacing: .09em; text-transform: uppercase; }
+
+    .command-hud { position: absolute; left: 50%; bottom: 91px; z-index: 8; width: min(510px,calc(100% - 40px)); min-height: 66px; padding: 11px 13px; background: rgba(18,20,16,.92); border: 1px solid rgba(255,255,255,.16); border-radius: 15px; box-shadow: 0 18px 44px rgba(0,0,0,.46); transform: translate(-50%,18px) scale(.97); opacity: 0; transition: opacity .35s var(--ease), transform .35s var(--ease), border-color .3s ease; backdrop-filter: blur(22px); }
+    .command-hud.visible { opacity: 1; transform: translate(-50%,0) scale(1); }
+    .command-hud.responding { border-color: rgba(158,180,149,.55); }
+    .hud-row { display: flex; align-items: center; gap: 12px; }
+    .keycap { flex: 0 0 auto; padding: 8px 10px; color: #191a17; background: var(--paper); border-radius: 8px; font: 800 9px/1 ui-monospace,SFMono-Regular,Menlo,monospace; box-shadow: inset 0 -2px rgba(0,0,0,.15); }
+    .hud-copy { min-width: 0; flex: 1; }
+    .hud-label { margin-bottom: 4px; color: var(--orange-soft); font: 700 8px/1 ui-monospace,SFMono-Regular,Menlo,monospace; letter-spacing: .16em; text-transform: uppercase; }
+    .responding .hud-label { color: #c1d6b7; }
+    .hud-text { overflow: hidden; color: var(--paper); font-size: clamp(13px,1.7vw,17px); font-weight: 620; white-space: nowrap; text-overflow: ellipsis; }
+    .wave { display: flex; align-items: center; justify-content: center; gap: 3px; width: 35px; height: 28px; }
+    .wave i { width: 2px; height: 6px; background: var(--orange); border-radius: 3px; animation: speak .8s ease-in-out infinite alternate; }
+    .wave i:nth-child(2) { height: 15px; animation-delay: -.25s; }
+    .wave i:nth-child(3) { height: 10px; animation-delay: -.5s; }
+    .wave i:nth-child(4) { height: 20px; animation-delay: -.35s; }
+    .responding .wave i { background: var(--sage); }
+    @keyframes speak { to { transform: scaleY(.35); opacity: .55; } }
+
+    .caption-card { position: absolute; left: 28px; right: 28px; bottom: 22px; z-index: 9; display: grid; grid-template-columns: 78px 1fr; align-items: start; gap: 14px; min-height: 50px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,.18); }
+    .speaker { padding-top: 4px; color: var(--orange-soft); font: 800 9px/1 ui-monospace,SFMono-Regular,Menlo,monospace; letter-spacing: .14em; text-transform: uppercase; }
+    .speaker.archi { color: #c1d6b7; }
+    .caption { margin: 0; color: #f4f2eb; font-size: clamp(13px,1.7vw,18px); line-height: 1.42; text-shadow: 0 2px 14px #000; }
+
+    .intro-card { position: absolute; inset: 0; z-index: 30; display: grid; place-items: center; padding: 30px; background: rgba(12,13,11,.86); backdrop-filter: blur(24px); transition: opacity .55s var(--ease), visibility .55s; }
+    .intro-card.dismissed { opacity: 0; visibility: hidden; pointer-events: none; }
+    .intro-inner { width: min(620px,100%); text-align: center; }
+    .intro-kicker { color: var(--orange-soft); font: 750 10px/1 ui-monospace,SFMono-Regular,Menlo,monospace; letter-spacing: .2em; text-transform: uppercase; }
+    .intro-inner h2 { margin: 18px 0 12px; font-size: clamp(38px,7vw,76px); line-height: .94; letter-spacing: -.065em; }
+    .intro-inner h2 em { color: var(--orange); font-style: normal; }
+    .intro-inner p { max-width: 470px; margin: 0 auto 26px; color: #b8b8ae; font-size: clamp(13px,1.6vw,16px); line-height: 1.6; }
+    .start-button { display: inline-flex; align-items: center; gap: 10px; min-height: 48px; padding: 0 20px; color: #161713; background: var(--paper); border: 0; border-radius: 999px; cursor: pointer; font-size: 13px; font-weight: 750; transition: transform .2s ease, background .2s ease; }
+    .start-button:hover { transform: translateY(-2px); background: #fffdf5; }
+    .start-button i { display: grid; place-items: center; width: 25px; height: 25px; color: var(--paper); background: var(--orange); border-radius: 50%; font-style: normal; }
+    .intro-note { margin-top: 15px; color: #74766f; font: 600 9px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace; letter-spacing: .08em; text-transform: uppercase; }
+
+    .controls { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 17px; margin-top: 14px; padding: 12px 14px; background: rgba(23,25,21,.8); border: 1px solid var(--line); border-radius: 14px; }
+    .control-button { display: grid; place-items: center; width: 40px; height: 40px; padding: 0; color: #151612; background: var(--paper); border: 0; border-radius: 50%; cursor: pointer; }
+    .control-button span { display: block; font-size: 15px; line-height: 1; }
+    .control-button span[hidden] { display: none; }
+    .timeline { display: flex; gap: 5px; height: 24px; align-items: center; }
+    .chapter { position: relative; flex: var(--weight) 1 0; height: 4px; padding: 0; overflow: hidden; background: rgba(255,255,255,.11); border: 0; border-radius: 999px; cursor: pointer; }
+    .chapter::after { content: ""; position: absolute; inset: 0; background: var(--paper); transform: scaleX(var(--fill,0)); transform-origin: left; }
+    .chapter.command::after { background: var(--sage); }
+    .chapter:hover { height: 8px; }
+    .control-right { display: flex; align-items: center; gap: 10px; color: var(--paper-dim); }
+    .timecode { min-width: 74px; font: 650 10px/1 ui-monospace,SFMono-Regular,Menlo,monospace; }
+    .icon-button { display: grid; place-items: center; width: 34px; height: 34px; padding: 0; color: var(--paper-dim); background: transparent; border: 1px solid var(--line); border-radius: 50%; cursor: pointer; }
+    .icon-button:hover { color: var(--paper); border-color: rgba(255,255,255,.28); }
+    .beat-nav { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; margin-top: 12px; }
+    .beat-button { min-height: 66px; padding: 11px 13px; color: #8f9189; text-align: left; background: rgba(255,255,255,.025); border: 1px solid var(--line); border-radius: 12px; cursor: pointer; transition: color .2s ease, background .2s ease, border-color .2s ease; }
+    .beat-button:hover, .beat-button.active { color: var(--paper); background: rgba(255,255,255,.055); border-color: rgba(244,122,42,.5); }
+    .beat-button small { display: block; margin-bottom: 6px; color: var(--orange-soft); font: 750 8px/1 ui-monospace,SFMono-Regular,Menlo,monospace; letter-spacing: .13em; text-transform: uppercase; }
+    .beat-button span { font-size: 12px; font-weight: 620; }
+    .footer-note { display: flex; justify-content: space-between; gap: 20px; margin-top: 18px; color: #73756d; font-size: 10px; }
+    .footer-note a { color: #9d9f96; text-decoration: none; }
+    .footer-note a:hover { color: var(--paper); }
+
+    /* Desktop film mode: size from available height so the whole review UI fits. */
+    @media (min-width: 721px) {
+      body { overflow: hidden; }
+      .shell {
+        --stage-width: min(100%, calc((100dvh - 220px) * 1.77778));
+        display: grid;
+        grid-template-rows: auto auto auto auto auto;
+        align-content: center;
+        justify-items: center;
+        gap: 8px;
+        height: 100dvh;
+        padding: 10px 0;
+      }
+      .masthead,
+      .film-frame,
+      .controls,
+      .beat-nav,
+      .footer-note { width: var(--stage-width); }
+      .masthead { margin: 0; }
+      .film-frame { min-height: 0; }
+      .controls { gap: 13px; margin: 0; padding: 6px 10px; }
+      .control-button { width: 36px; height: 36px; }
+      .icon-button { width: 31px; height: 31px; }
+      .beat-nav { gap: 8px; margin: 0; }
+      .beat-button { min-height: 48px; padding: 8px 11px; }
+      .beat-button small { margin-bottom: 4px; }
+      .footer-note { margin: 0; line-height: 1; }
+    }
+
+    @media (max-width: 720px) {
+      .shell { width: min(100% - 20px,1180px); padding-top: 18px; }
+      .masthead { align-items: flex-start; }
+      .voice-chip span { display: none; }
+      .film-frame { min-height: 510px; aspect-ratio: auto; }
+      .files-window, .editor-window { inset: 18% 5% 19%; }
+      .files-body { grid-template-columns: 94px 1fr; }
+      .file-grid { grid-template-columns: repeat(2,1fr); padding: 18px; }
+      .architecture-panel { top: 19%; width: calc(100% - 30px); padding: 8px; }
+      .pipeline { grid-template-columns: 1fr; gap: 5px; }
+      .pipeline-arrow { transform: rotate(90deg); font-size: 12px; }
+      .pipeline-node { min-height: 44px; }
+      .community-panel { inset: 15% 6% 24%; padding: 10px; }
+      .community-mark { width: 52px; height: 52px; }
+      .command-hud { bottom: 112px; }
+      .caption-card { left: 18px; right: 18px; grid-template-columns: 62px 1fr; }
+      .controls { grid-template-columns: auto 1fr; }
+      .control-right { grid-column: 1/-1; justify-content: flex-end; }
+      .beat-nav { grid-template-columns: 1fr; }
+      .beat-button { min-height: 52px; }
+      .footer-note { flex-direction: column; }
+    }
+    @media (prefers-reduced-motion: reduce) { *,*::before,*::after { scroll-behavior: auto!important; animation-duration: .01ms!important; animation-iteration-count: 1!important; transition-duration: .01ms!important; } }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="masthead">
+      <div class="brand-lockup">
+        <img class="brand-mark" src="../media/archi_mini_logo_regen.png" alt="">
+        <div><p class="eyebrow">Concept film · field study 03</p><h1>A<span>r</span>CH<span>i</span> — A Shorter Path</h1></div>
+      </div>
+      <div class="voice-cast" aria-label="Voice cast">
+        <div class="voice-chip"><i class="voice-dot"></i><strong>Jimmy</strong><span>Narrator</span></div>
+        <div class="voice-chip user"><i class="voice-dot"></i><strong>Ethan</strong><span>User</span></div>
+        <div class="voice-chip archi"><i class="voice-dot"></i><strong>Savvy</strong><span>ArCHi</span></div>
+      </div>
+    </header>
+
+    <section class="film-frame" aria-label="ArCHi interactive concept film">
+      <div class="desktop" id="desktop">
+        <div class="desktop-bar">
+          <div class="workspaces" aria-label="Workspaces"><span class="workspace-pill active" data-workspace="1">1</span><span class="workspace-pill" data-workspace="2">2</span><span class="workspace-pill" data-workspace="3">3</span></div>
+          <span id="active-app">Workspace 1</span>
+          <div class="sys-tray"><span>◉</span><span>◒</span><span id="desktop-clock">10:42</span></div>
+        </div>
+        <div class="stage-note" id="stage-note">The small things</div>
+
+        <div class="window files-window hidden-window" id="downloads-window" aria-hidden="true">
+          <div class="window-titlebar"><div class="traffic"><i></i><i></i><i></i></div><div class="window-title">Downloads</div><div></div></div>
+          <div class="files-body">
+            <aside class="files-side"><div class="side-item">Recent</div><div class="side-item">Home</div><div class="side-item active">Downloads</div><div class="side-item">Documents</div><div class="side-item">Pictures</div></aside>
+            <div class="file-grid"><div class="file-card"><i class="folder"></i><span>Projects</span></div><div class="file-card"><i class="folder"></i><span>Voice samples</span></div><div class="file-card"><i class="folder"></i><span>References</span></div><div class="file-card"><i class="folder"></i><span>Exports</span></div></div>
+          </div>
+        </div>
+
+        <div class="window editor-window hidden-window" id="editor-window" aria-hidden="true">
+          <div class="window-titlebar"><div class="traffic"><i></i><i></i><i></i></div><div class="window-title">Text Editor · access-notes.md</div><div></div></div>
+          <div class="editor-tabs"><div class="editor-tab">access-notes.md</div></div>
+          <div class="editor-body">
+            <div class="line-numbers">1<br>2<br>3<br>4<br>5<br>6</div>
+            <div class="code-sheet"><span class="orange"># Access should follow intent</span><br><br><span class="dim">- current:</span> local voice + window control<br><span class="dim">- next:</span> <span class="sage">magnification provider</span><br><span class="dim">- principle:</span> coordinate, do not replace</div>
+          </div>
+        </div>
+
+        <div class="architecture-panel" id="architecture-panel" aria-hidden="true">
+          <div class="pipeline">
+            <div class="pipeline-node"><strong>Simple intent</strong><span>Voice · switch · radial · keyboard</span></div>
+            <div class="pipeline-arrow">→</div>
+            <div class="pipeline-node router"><strong>ArCHi router</strong><span>Local · allowlisted · deterministic</span></div>
+            <div class="pipeline-arrow">→</div>
+            <div class="pipeline-node"><strong>Existing tools</strong><span>Compositor · speech · providers</span></div>
+          </div>
+          <div class="provider-row"><span class="provider-chip">Window control · today</span><span class="provider-chip">Local speech · today</span><span class="provider-chip planned">Magnifier · first planned integration</span></div>
+        </div>
+
+        <div class="community-panel" id="community-panel" aria-hidden="true">
+          <img class="community-mark" src="../media/archi_mini_logo_regen.png" alt="">
+          <h2>Open source meets <span>open minds.</span></h2>
+          <p>Great talent, joined by even greater people, can help ArCHi reach the millions who may benefit from it.</p>
+          <div class="community-invite">Join the ArCHi community</div>
+        </div>
+
+        <div class="command-hud" id="command-hud" aria-live="polite">
+          <div class="hud-row"><span class="keycap">SUPER R</span><div class="hud-copy"><div class="hud-label" id="hud-label">Listening locally</div><div class="hud-text" id="hud-text">open downloads</div></div><div class="wave" aria-hidden="true"><i></i><i></i><i></i><i></i></div></div>
+        </div>
+        <div class="caption-card" id="caption-card"><div class="speaker" id="speaker">Jimmy</div><p class="caption" id="caption">Most desktop tasks are small. Open a folder. Close a window. Move on.</p></div>
+      </div>
+
+      <div class="intro-card" id="intro-card">
+        <div class="intro-inner"><div class="intro-kicker">ArCHi · interactive concept film</div><h2>A shorter path from <em>intent</em> to access.</h2><p>A prerecorded concept demonstration. The close-confirmation conversation is proposed behavior; the current beta reports closed or needs attention.</p><button class="start-button" id="start-button" type="button"><i>▶</i> Play with sound</button><div class="intro-note">Includes proposed behavior · Jimmy narrates · Ethan asks · Savvy answers · 01:42</div></div>
+      </div>
+    </section>
+
+    <div class="controls" aria-label="Film controls">
+      <button class="control-button" id="play-button" type="button" aria-label="Play"><span id="play-icon" aria-hidden="true">▶</span><span id="pause-icon" aria-hidden="true" hidden>Ⅱ</span></button>
+      <div class="timeline" id="timeline" aria-label="Film chapters"></div>
+      <div class="control-right"><span class="timecode" id="timecode">00:00 / 01:42</span><button class="icon-button" id="mute-button" type="button" aria-label="Mute sound" title="Mute sound">◖))</button><button class="icon-button" id="restart-button" type="button" aria-label="Restart film" title="Restart film">↺</button></div>
+    </div>
+
+    <nav class="beat-nav" aria-label="Jump to demonstration">
+      <button class="beat-button active" type="button" data-jump="1"><small>01 · Workspace 1</small><span>Open Downloads</span></button>
+      <button class="beat-button" type="button" data-jump="3"><small>02 · Focused window</small><span>Close Downloads</span></button>
+      <button class="beat-button" type="button" data-jump="5"><small>03 · Off-screen target</small><span>Close Text Editor · keep focus</span></button>
+    </nav>
+    <footer class="footer-note"><span>Concept demonstration · demo audio: elevenlabs.io</span><a href="index.html">ArCHi documentation →</a></footer>
+  </main>
+
+  <audio id="audio-jimmy-intro" src="../media/film-v3-jimmy-intro.wav" preload="auto"></audio>
+  <audio id="audio-jimmy-explicit" src="../media/film-v3-jimmy-explicit.wav" preload="auto"></audio>
+  <audio id="audio-jimmy-simple" src="../media/film-v3-jimmy-simple.wav" preload="auto"></audio>
+  <audio id="audio-jimmy-workspace" src="../media/film-v3-jimmy-workspace.wav" preload="auto"></audio>
+  <audio id="audio-jimmy-close" src="../media/film-v3-jimmy-close.wav" preload="auto"></audio>
+  <audio id="audio-jimmy-community" src="../media/film-v3-jimmy-community.wav" preload="auto"></audio>
+  <audio id="audio-ethan-open" src="../media/film-v3-ethan-open-downloads.wav" preload="auto"></audio>
+  <audio id="audio-ethan-close-downloads" src="../media/film-v3-ethan-close-downloads.wav" preload="auto"></audio>
+  <audio id="audio-ethan-close-editor" src="../media/film-v3-ethan-close-text-editor.wav" preload="auto"></audio>
+  <audio id="audio-ethan-confirm" src="../media/film-v3-ethan-confirm.wav" preload="auto"></audio>
+  <audio id="audio-savvy-open" src="../media/film-v3-savvy-open-downloads.wav" preload="auto"></audio>
+  <audio id="audio-savvy-close-downloads" src="../media/film-v3-savvy-close-downloads.wav" preload="auto"></audio>
+  <audio id="audio-savvy-confirm-editor" src="../media/film-v3-savvy-confirm-text-editor.wav" preload="auto"></audio>
+  <audio id="audio-savvy-close-editor" src="../media/film-v3-savvy-close-text-editor.wav" preload="auto"></audio>
+
+  <script>
+    const chapters = [
+      { kind:'narration', duration:6.5, audio:'audio-jimmy-intro', note:'The small things', caption:'Most desktop tasks are small. Open a folder. Close a window. Move on.', view:'clean' },
+      { kind:'command', duration:6, userAudio:'audio-ethan-open', userAudioDelay:.75, responseAudio:'audio-savvy-open', responseAudioDelay:2.65, actionAt:4.55, note:'01 · Explicit request', command:'open downloads', response:'Opening downloads.', view:'open-downloads' },
+      { kind:'narration', duration:10.3, audio:'audio-jimmy-explicit', note:'Local by default', caption:'The request begins only when I press the shortcut. ArCHi hears the intent, matches a known local action, and lets the desktop do the work.', view:'downloads-open' },
+      { kind:'command', duration:6, userAudio:'audio-ethan-close-downloads', userAudioDelay:.75, responseAudio:'audio-savvy-close-downloads', responseAudioDelay:2.65, actionAt:4.5, note:'02 · Same shortcut', command:'close downloads', response:'Closing downloads.', view:'close-downloads' },
+      { kind:'narration', duration:8.6, audio:'audio-jimmy-simple', note:'Set up · then keep focus', caption:'A text editor is open on workspace two. Switch back to Files. The work in front of us stays where it is.', view:'editor-setup' },
+      { kind:'command', duration:11.5, userAudio:'audio-ethan-close-editor', userAudioDelay:.75, responseAudio:'audio-savvy-confirm-editor', responseAudioDelay:2.75, confirmAudio:'audio-ethan-confirm', confirmAudioDelay:5.9, finalResponseAudio:'audio-savvy-close-editor', finalResponseAudioDelay:7.5, actionAt:9.7, note:'03 · Off-screen close · focus kept', command:'close text editor', confirmPrompt:'Close Text Editor on workspace two?', confirmation:'Yes.', response:'Closed Text Editor.', view:'close-editor-offscreen', audioCues:[{id:'audio-ethan-close-editor',delay:.75},{id:'audio-savvy-confirm-editor',delay:2.75},{id:'audio-ethan-confirm',delay:5.9},{id:'audio-savvy-close-editor',delay:7.5}] },
+      { kind:'narration', duration:9.6, audio:'audio-jimmy-workspace', note:'Targeted by window address', caption:'The text editor was on another workspace. ArCHi found the matching window address, asked before closing it, and left the current focus alone.', view:'focus-kept' },
+      { kind:'narration', duration:31, audio:'audio-jimmy-close', note:'Accessibility coordination · not productivity', caption:'This is not a productivity assistant. ArCHi is an accessibility coordination layer for Omarchy. A simple intent maps to a known, allowlisted action, then the existing desktop tool does the work. Today, that means local voice commands and window control. Magnification is the first planned provider integration; it is not connected yet. The aim is not to replace good tools, but to give fragmented accessibility tools a shared path from intent to action.', view:'architecture' },
+      { kind:'narration', duration:12.7, audio:'audio-jimmy-community', note:'Join the ArCHi community', caption:'Where open source meets open minds. Join the ArCHi community. Great talent, joined by even greater people, can help ensure this project reaches the millions who may benefit from it.', view:'community' }
+    ];
+    const totalDuration = chapters.reduce((sum,item) => sum + item.duration, 0);
+    const introCard = document.getElementById('intro-card');
+    const startButton = document.getElementById('start-button');
+    const playButton = document.getElementById('play-button');
+    const playIcon = document.getElementById('play-icon');
+    const pauseIcon = document.getElementById('pause-icon');
+    const muteButton = document.getElementById('mute-button');
+    const restartButton = document.getElementById('restart-button');
+    const timeline = document.getElementById('timeline');
+    const timecode = document.getElementById('timecode');
+    const stageNote = document.getElementById('stage-note');
+    const speaker = document.getElementById('speaker');
+    const caption = document.getElementById('caption');
+    const commandHud = document.getElementById('command-hud');
+    const hudLabel = document.getElementById('hud-label');
+    const hudText = document.getElementById('hud-text');
+    const downloadsWindow = document.getElementById('downloads-window');
+    const editorWindow = document.getElementById('editor-window');
+    const architecturePanel = document.getElementById('architecture-panel');
+    const communityPanel = document.getElementById('community-panel');
+    const activeApp = document.getElementById('active-app');
+    const workspacePills = [...document.querySelectorAll('.workspace-pill')];
+    const beatButtons = [...document.querySelectorAll('.beat-button')];
+    const audioTracks = [...document.querySelectorAll('audio')];
+    let currentChapter=0, chapterElapsed=0, isPlaying=false, isMuted=false, hasStarted=false, rafId=0, lastFrame=0, scheduledAudio=[], activeAudio=[];
+
+    function formatTime(value) { const seconds=Math.max(0,Math.round(value)); return `${String(Math.floor(seconds/60)).padStart(2,'0')}:${String(seconds%60).padStart(2,'0')}`; }
+    function globalElapsed() { return chapters.slice(0,currentChapter).reduce((sum,item)=>sum+item.duration,0)+chapterElapsed; }
+    function stopAudio() { scheduledAudio.forEach(timer=>clearTimeout(timer)); scheduledAudio=[]; audioTracks.forEach(track=>{track.pause(); track.currentTime=0;}); activeAudio=[]; }
+    function setWorkspace(number) { workspacePills.forEach(pill=>pill.classList.toggle('active',Number(pill.dataset.workspace)===number)); }
+    function setWorkspaceOccupied(number,occupied) { workspacePills.forEach(pill=>{ if (Number(pill.dataset.workspace)===number) pill.classList.toggle('occupied',occupied); }); }
+    function setWindowState(element,visible,background=false) { element.classList.toggle('hidden-window',!visible); element.classList.toggle('in-background',background); element.setAttribute('aria-hidden',String(!visible)); }
+
+    function renderView(view,progress=0) {
+      const chapter=chapters[currentChapter];
+      commandHud.classList.remove('visible','responding'); architecturePanel.classList.remove('visible'); architecturePanel.setAttribute('aria-hidden','true'); communityPanel.classList.remove('visible'); communityPanel.setAttribute('aria-hidden','true'); setWorkspace(1); setWorkspaceOccupied(2,false); activeApp.textContent='Workspace 1';
+      if (view==='downloads-open') { setWindowState(downloadsWindow,true); setWindowState(editorWindow,false); activeApp.textContent='Files · Downloads'; }
+      else if (view==='open-downloads') { const opened=chapterElapsed>=chapter.actionAt; setWindowState(downloadsWindow,opened); setWindowState(editorWindow,false); activeApp.textContent=opened?'Files · Downloads':'Workspace 1'; renderCommand(chapterElapsed,chapter); }
+      else if (view==='close-downloads') { const open=chapterElapsed<chapter.actionAt; setWindowState(downloadsWindow,open); setWindowState(editorWindow,false); activeApp.textContent=open?'Files · Downloads':'Workspace 1'; renderCommand(chapterElapsed,chapter); }
+      else if (view==='editor-setup') { const switched=chapterElapsed>=3.1; setWindowState(editorWindow,!switched); setWindowState(downloadsWindow,switched); setWorkspace(switched?1:2); setWorkspaceOccupied(2,true); activeApp.textContent=switched?'Files · Downloads · focus here':'Text Editor · Workspace 2'; }
+      else if (view==='close-editor-offscreen') { const closed=chapterElapsed>=chapter.actionAt; setWindowState(editorWindow,false); setWindowState(downloadsWindow,true); setWorkspace(1); setWorkspaceOccupied(2,!closed); activeApp.textContent='Files · Downloads · focus kept'; renderCommand(chapterElapsed,chapter); }
+      else if (view==='focus-kept') { setWindowState(editorWindow,false); setWindowState(downloadsWindow,true); setWorkspace(1); activeApp.textContent='Files · Downloads · focus kept'; }
+      else if (view==='architecture') { setWindowState(downloadsWindow,false); setWindowState(editorWindow,false); architecturePanel.classList.add('visible'); architecturePanel.setAttribute('aria-hidden','false'); activeApp.textContent='Omarchy · accessibility coordination'; }
+      else if (view==='community') { setWindowState(downloadsWindow,false); setWindowState(editorWindow,false); communityPanel.classList.add('visible'); communityPanel.setAttribute('aria-hidden','false'); activeApp.textContent='ArCHi · open source · open minds'; }
+      else { setWindowState(downloadsWindow,false); setWindowState(editorWindow,false); }
+    }
+
+    function renderCommand(elapsed,chapter) {
+      commandHud.classList.add('visible');
+      const waiting=elapsed<chapter.userAudioDelay;
+      const userCommand=!waiting&&elapsed<chapter.responseAudioDelay;
+      const prompt=Boolean(chapter.confirmPrompt)&&elapsed>=chapter.responseAudioDelay&&elapsed<chapter.confirmAudioDelay;
+      const userConfirm=Boolean(chapter.confirmation)&&elapsed>=chapter.confirmAudioDelay&&elapsed<chapter.finalResponseAudioDelay;
+      const finalResponse=Boolean(chapter.finalResponseAudio)&&elapsed>=chapter.finalResponseAudioDelay;
+      const responding=prompt||finalResponse||(!chapter.confirmPrompt&&elapsed>=chapter.responseAudioDelay);
+      commandHud.classList.toggle('responding',responding);
+      hudLabel.textContent=waiting?'Push-to-talk active':userCommand?'Ethan · user voice':prompt?'Savvy · confirmation':userConfirm?'Ethan · confirms':'Savvy · ArCHi response';
+      hudText.textContent=waiting?'Ready to listen':userCommand?chapter.command:prompt?chapter.confirmPrompt:userConfirm?chapter.confirmation:chapter.response;
+      speaker.textContent=waiting?'Input':userCommand||userConfirm?'Ethan':'ArCHi';
+      speaker.classList.toggle('archi',responding);
+      caption.textContent=waiting?'Super + R':userCommand?`“${chapter.command}”`:prompt?chapter.confirmPrompt:userConfirm?`“${chapter.confirmation}”`:chapter.response;
+    }
+
+    function renderChapter() {
+      const chapter=chapters[currentChapter]; const progress=Math.min(1,chapterElapsed/chapter.duration); stageNote.textContent=chapter.note;
+      if (chapter.kind==='narration') { speaker.textContent='Jimmy'; speaker.classList.remove('archi'); caption.textContent=chapter.caption; }
+      renderView(chapter.view,progress);
+      [...timeline.children].forEach((bar,index)=>{ const fill=index<currentChapter?1:index===currentChapter?progress:0; bar.style.setProperty('--fill',fill); });
+      beatButtons.forEach((button,index)=>{ const ranges=[[1,2],[3,4],[5,8]]; button.classList.toggle('active',currentChapter>=ranges[index][0]&&currentChapter<=ranges[index][1]); });
+      timecode.textContent=`${formatTime(globalElapsed())} / ${formatTime(totalDuration)}`;
+    }
+
+    function playChapterAudio(restart=true) {
+      stopAudio(); const chapter=chapters[currentChapter]; if (isMuted) return;
+      const cues=chapter.kind==='command'
+        ? chapter.audioCues||[{id:chapter.userAudio,delay:chapter.userAudioDelay},{id:chapter.responseAudio,delay:chapter.responseAudioDelay}]
+        : [{id:chapter.audio,delay:0}];
+      cues.forEach(cue=>{
+        const track=document.getElementById(cue.id); if (!track) return;
+        const begin=()=>{ const offset=restart?0:Math.max(0,chapterElapsed-cue.delay); if (track.duration&&offset>=track.duration) return; activeAudio.push(track); track.currentTime=offset; track.muted=isMuted; track.play().catch(()=>{}); };
+        const remainingDelay=Math.max(0,cue.delay-chapterElapsed);
+        if (remainingDelay>0) scheduledAudio.push(setTimeout(begin,remainingDelay*1000)); else begin();
+      });
+    }
+
+    function setPlaying(playing) {
+      isPlaying=playing; playButton.setAttribute('aria-label',playing?'Pause':'Play'); playIcon.hidden=playing; pauseIcon.hidden=!playing;
+      if (playing) { if (!hasStarted) { hasStarted=true; introCard.classList.add('dismissed'); } playChapterAudio(chapterElapsed===0); lastFrame=performance.now(); cancelAnimationFrame(rafId); rafId=requestAnimationFrame(tick); }
+      else { scheduledAudio.forEach(timer=>clearTimeout(timer)); scheduledAudio=[]; activeAudio.forEach(track=>track.pause()); cancelAnimationFrame(rafId); }
+    }
+
+    function goToChapter(index,autoplay=isPlaying) {
+      stopAudio(); currentChapter=Math.max(0,Math.min(chapters.length-1,index)); chapterElapsed=0; renderChapter(); if (autoplay) { isPlaying=false; setPlaying(true); } else setPlaying(false);
+    }
+
+    function tick(now) {
+      if (!isPlaying) return; chapterElapsed+=Math.min(.12,(now-lastFrame)/1000); lastFrame=now;
+      if (chapterElapsed>=chapters[currentChapter].duration) { if (currentChapter<chapters.length-1) { goToChapter(currentChapter+1,true); return; } chapterElapsed=chapters[currentChapter].duration; renderChapter(); setPlaying(false); return; }
+      renderChapter(); rafId=requestAnimationFrame(tick);
+    }
+
+    chapters.forEach((chapter,index)=>{ const button=document.createElement('button'); button.type='button'; button.className=`chapter ${chapter.kind==='command'?'command':''}`; button.style.setProperty('--weight',chapter.duration); button.setAttribute('aria-label',`Jump to chapter ${index+1}: ${chapter.note}`); button.addEventListener('click',()=>goToChapter(index,true)); timeline.appendChild(button); });
+    startButton.addEventListener('click',()=>goToChapter(0,true));
+    playButton.addEventListener('click',()=>{ if (currentChapter===chapters.length-1&&chapterElapsed>=chapters[currentChapter].duration) goToChapter(0,true); else setPlaying(!isPlaying); });
+    restartButton.addEventListener('click',()=>goToChapter(0,true));
+    muteButton.addEventListener('click',()=>{ isMuted=!isMuted; audioTracks.forEach(track=>track.muted=isMuted); muteButton.textContent=isMuted?'×':'◖))'; muteButton.setAttribute('aria-label',isMuted?'Unmute sound':'Mute sound'); if (!isMuted&&isPlaying) playChapterAudio(false); });
+    beatButtons.forEach(button=>button.addEventListener('click',()=>{ introCard.classList.add('dismissed'); hasStarted=true; goToChapter(Number(button.dataset.jump),true); }));
+    window.addEventListener('keydown',event=>{ if (event.code==='Space'&&!['BUTTON','INPUT'].includes(event.target.tagName)) { event.preventDefault(); setPlaying(!isPlaying); } if (event.key==='ArrowRight') goToChapter(currentChapter+1,isPlaying); if (event.key==='ArrowLeft') goToChapter(currentChapter-1,isPlaying); });
+    document.addEventListener('visibilitychange',()=>{ if (document.hidden&&isPlaying) setPlaying(false); });
+    document.getElementById('desktop-clock').textContent=new Intl.DateTimeFormat([],{hour:'2-digit',minute:'2-digit'}).format(new Date()); renderChapter();
+  </script>
+</body>
+</html>

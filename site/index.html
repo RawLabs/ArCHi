@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ArCHi — Artificial Restorative Computer Harness Intelligence</title>
-  <meta name="description" content="Local, deterministic, push-to-talk desktop command layer for Omarchy and Hyprland. High accessibility, zero cloud telemetry.">
+  <meta name="description" content="Local-by-default, deterministic accessibility coordination for Omarchy and Hyprland.">
   <link rel="icon" type="image/png" href="../media/archi_favicon_regen.png">
   <link rel="stylesheet" href="css/styles.css">
 </head>
@@ -30,8 +30,8 @@
         <a href="#features" class="nav-link">Features</a>
         <a href="#commands" class="nav-link">Command Registry</a>
         <a href="#quickstart" class="nav-link">Quickstart</a>
-        <a href="#architecture" class="nav-link">Architecture</a>
-        <a href="logo_animation.html" class="nav-link" style="color: var(--accent-amber); font-weight: 600;">✨ AʳCHⁱ Logo Lab</a>
+        <a href="concept_film.html" class="nav-link" style="color: var(--accent-orange); font-weight: 700;">🎬 Concept Film</a>
+        <a href="logo_animation.html" class="nav-link" style="color: var(--text-dim); font-weight: 500;">✨ Logo Lab [Archive]</a>
       </nav>
 
       <!-- Accessibility Settings Toolbar -->
@@ -70,39 +70,39 @@
           </div>
 
           <h1 id="hero-title" class="hero-title">
-            Restore Desktop Velocity with Private Push-to-Talk.
+            Turn desktop intent into accessible action.
           </h1>
           <p class="hero-subtitle">
-            A local, deterministic voice command harness for <strong>Omarchy</strong> and <strong>Hyprland</strong>.
-            Designed for effortless accessibility, zero cloud telemetry, and millisecond command execution.
+            A local-by-default, deterministic accessibility coordination layer for <strong>Omarchy</strong> and <strong>Hyprland</strong>.
+            It routes explicit intent to trusted desktop tools without pretending to replace them.
           </p>
 
           <!-- Quick 1-Line Install Snippet -->
           <div class="quick-snippet-box">
-            <span class="cmd" id="hero-install-cmd">git clone https://github.com/omarchy/archi.git &amp;&amp; cd archi &amp;&amp; ./install.sh</span>
+            <span class="cmd" id="hero-install-cmd">./install.sh</span>
             <button class="copy-btn" data-copy-target="hero-install-cmd" aria-label="Copy installation command">
               📋 <span>Copy</span>
             </button>
           </div>
 
           <div class="hero-actions">
-            <a href="#simulator" class="btn btn-primary">Try Interactive Simulator</a>
-            <a href="logo_animation.html" class="btn btn-secondary">✨ Interactive AʳCHⁱ Lab</a>
+            <a href="concept_film.html" class="btn btn-primary" style="background: var(--accent-orange); color: #000; font-weight: 700;">🎬 Watch the Concept Film</a>
+            <a href="#simulator" class="btn btn-secondary">Interactive Simulator</a>
           </div>
 
           <!-- Trust Badges -->
           <div class="hero-badges">
-            <span class="badge badge-green">🔒 100% Local &amp; Private</span>
+            <span class="badge badge-green">🔒 Local by Default</span>
             <span class="badge badge-amber">🎙️ Push-to-Talk (No Always-On Mic)</span>
             <span class="badge badge-blue">⚡ Deterministic Argv Routing</span>
           </div>
         </div>
 
         <!-- Hero Visual Banner Card -->
-        <a href="logo_animation.html" class="hero-visual-card" title="Open Interactive Chalkboard Animation Lab" style="text-decoration: none; display: block;">
+        <a href="concept_film.html" class="hero-visual-card" title="Open the ArCHi concept film" style="text-decoration: none; display: block;">
           <img src="../media/archi_main_logo_regen.png" alt="ArCHi Chalk Logo: Artificial Restorative Computer Harness Intelligence" class="hero-banner-img">
           <div class="hero-visual-caption">
-            The Computer Harness Concept: AʳCHⁱ Technical Lockup &middot; Click to launch interactive animation &rarr;
+            🎬 Watch the ArCHi Concept Film &middot; Accessibility in action &middot; Click to play &rarr;
           </div>
         </a>
       </div>
@@ -114,7 +114,7 @@
         <div class="section-intro">
           <span class="badge badge-amber" style="margin-bottom: 0.75rem;">Interactive Prototype</span>
           <h2 id="sim-title">Test the Deterministic Harness Flow</h2>
-          <p>Experience how push-to-talk capture, strict allowlist routing, and local Pocket TTS synthesis work together without touching the cloud.</p>
+          <p>See how explicit capture, strict allowlist routing, and local speech feedback work together—without replacing the desktop tools already in place.</p>
         </div>
 
         <div class="simulator-box">
@@ -123,9 +123,12 @@
               <span class="status-dot" id="sim-status-dot"></span>
               <span id="sim-status-text">Idle — Ready for Push-to-Talk</span>
             </div>
-            <div style="font-size: 0.8rem; color: var(--text-dim);">
-              Latency Target: <strong>&lt; 150ms</strong>
-            </div>
+            <div style="font-size: 0.8rem; color: var(--text-dim);">Feedback: <strong>local and explicit</strong></div>
+          </div>
+          <div id="sim-voice-feedback" class="sim-voice-feedback" role="status" aria-live="polite" hidden>
+            <span class="sim-voice-dot" aria-hidden="true"></span>
+            <strong>Savvy · ArCHi</strong>
+            <span id="sim-voice-text">Matched a known, allowlisted action.</span>
           </div>
 
           <div class="sim-body">
@@ -134,7 +137,7 @@
               <div>
                 <h3 style="font-size: 1.15rem; margin-bottom: 0.5rem;">1. Trigger Push-to-Talk</h3>
                 <p style="font-size: 0.88rem; margin-bottom: 1.25rem;">
-                  Hold down the button (or press Space when focused) to simulate voice capture, or click any sample phrase below.
+                  This browser demo uses sample phrases and prerecorded audio; it does not record your microphone or control your desktop. Hold the button or press Space while focused, or select a phrase below.
                 </p>
                 
                 <button id="sim-ptt-button" class="ptt-interactive-btn" aria-label="Push to talk button (hold to record)">
@@ -147,7 +150,7 @@
               <div class="sample-phrases-group">
                 <span class="sample-phrases-label">Or Click a Common Voice Command:</span>
                 <div class="phrase-pill-list">
-                  <button class="phrase-pill" data-phrase="open browser">"open browser"</button>
+                  <button class="phrase-pill" data-phrase="open downloads">"open downloads"</button>
                   <button class="phrase-pill" data-phrase="volume up">"volume up"</button>
                   <button class="phrase-pill" data-phrase="read clipboard">"read clipboard"</button>
                   <button class="phrase-pill" data-phrase="take screenshot">"take screenshot"</button>
@@ -177,7 +180,6 @@
 
               <div class="flow-step">
                 <div class="flow-step-label">
-                  <span>Step 3: Argv Execution</span>
                   <span>Direct System Call</span>
                 </div>
                 <div class="flow-step-content" id="sim-step-argv">⚙️ Executing: ["omarchy-audio-output-volume", "raise"]</div>
@@ -200,8 +202,8 @@
     <section id="features" class="features-section" aria-labelledby="features-title">
       <div class="container">
         <div class="section-intro">
-          <h2 id="features-title">Designed for Accessibility, Built for Speed</h2>
-          <p>ArCHi removes friction from desktop computing with clean architectural boundaries and complete user agency.</p>
+          <h2 id="features-title">Designed for Accessibility, Built to Coordinate</h2>
+          <p>ArCHi reduces friction by connecting existing desktop capabilities through clear boundaries and user-directed control.</p>
         </div>
 
         <div class="grid-3">
@@ -219,7 +221,7 @@
             <div class="feature-icon-wrapper" aria-hidden="true">⚡</div>
             <h3>Deterministic &amp; Allowlisted</h3>
             <p>
-              Zero hallucinations. Trigger phrases map to immutable <code>argv</code> arrays defined in your trusted <code>commands.toml</code> configuration.
+              No autonomous command selection. Trigger phrases map to inspectable <code>argv</code> arrays defined in your trusted <code>commands.toml</code> configuration.
             </p>
           </article>
 
@@ -306,7 +308,7 @@
       <div class="container">
         <div class="section-intro">
           <h2 id="arch-title">The "Harness" Architectural Model</h2>
-          <p>ArCHi connects your existing desktop capabilities with strict trust boundaries and explicit execution guarantees.</p>
+          <p>ArCHi connects existing desktop capabilities through strict trust boundaries. The current beta is intentionally small; provider coordination is the direction.</p>
         </div>
 
         <div class="arch-flow-diagram">
@@ -324,7 +326,7 @@
 
           <div class="arch-node">
             <div class="arch-node-number">3</div>
-            <h4>Direct Argv Execution</h4>
+            <h4>Direct Operation</h4>
             <p style="font-size: 0.84rem; margin-top: 0.5rem;">Launches binaries directly as argv arrays without shell interpolation.</p>
           </div>
 
@@ -334,6 +336,7 @@
             <p style="font-size: 0.84rem; margin-top: 0.5rem;">Spoken replies played through PipeWire with automatic stream ducking.</p>
           </div>
         </div>
+        <p class="architecture-status"><strong>Today:</strong> explicit voice capture, allowlisted desktop actions, native screen zoom, local speech and feedback. <strong>Future:</strong> a general provider broker and semantic accessibility controls.</p>
       </div>
     </section>
 
@@ -342,7 +345,7 @@
       <div class="container">
         <div class="section-intro">
           <h2 id="docs-title">Quickstart &amp; Setup Guide</h2>
-          <p>Get ArCHi up and running in your Omarchy / Hyprland environment in under two minutes.</p>
+          <p>Set up the current Omarchy / Hyprland beta with its explicit capture, local speech, and desktop prerequisites.</p>
         </div>
 
         <div class="docs-tabs" role="tablist" aria-label="Documentation Categories">
@@ -355,12 +358,10 @@
         <div id="tab-install" class="tab-pane active" role="tabpanel" aria-labelledby="tab-btn-install">
           <div class="code-block-wrapper">
             <div class="code-block-header">
-              <span>Terminal — One-line Installation</span>
+              <span>Terminal — Source Installation</span>
               <button class="copy-btn" data-copy-target="code-install-box">📋 Copy</button>
             </div>
-            <pre class="code-block-content" id="code-install-box"><code># Clone repository and run the safe installer
-git clone https://github.com/omarchy/archi.git
-cd archi
+            <pre class="code-block-content" id="code-install-box"><code># From the downloaded or cloned ArCHi source directory:
 ./install.sh
 
 # To refresh an existing registry with current defaults (with backup):
@@ -382,9 +383,10 @@ cd archi
 • Omarchy / Hyprland Wayland Compositor
 • Python 3.11+
 • Voxtype (for push-to-talk audio capture)
-• PipeWire tools: pw-play, wpctl, pw-dump
-• Utilities: curl, jq, wl-clipboard, hyprctl
-• Local Pocket TTS endpoint (default: http://127.0.0.1:8000/tts)</code></pre>
+• PipeWire tools: pw-play, pw-record, wpctl, pw-dump
+• Utilities: curl, jq, wl-clipboard, hyprctl, gtk-launch, xdg-open, pactl
+• Local TTS helper or Pocket TTS endpoint (default: http://127.0.0.1:8000/tts)
+• Default voice: alba; custom samples are optional (see INSTALL.md)</code></pre>
           </div>
         </div>
 
@@ -392,12 +394,26 @@ cd archi
         <div id="tab-config" class="tab-pane" role="tabpanel" aria-labelledby="tab-btn-config">
           <div class="code-block-wrapper">
             <div class="code-block-header">
-              <span>Hyprland Push-to-Talk Keybinding Example (~/.config/hypr/hyprland.conf)</span>
+              <span>Omarchy Toggle-to-Talk Example (~/.config/hypr/bindings.lua)</span>
               <button class="copy-btn" data-copy-target="code-config-box">📋 Copy</button>
             </div>
-            <pre class="code-block-content" id="code-config-box"><code># Bind Push-to-Talk to SUPER + SPACE (or your preferred key)
-bind = $mainMod, SPACE, exec, archi-control-start
-bindr = $mainMod, SPACE, exec, archi-control-stop</code></pre>
+            <pre class="code-block-content" id="code-config-box"><code>hl.bind("SUPER + R", function()
+  hl.dispatch(hl.dsp.exec_cmd("archi-control-start"))
+  hl.dispatch(hl.dsp.submap("archi_control"))
+end, { description = "Start ArCHi control mode" })
+
+hl.define_submap("archi_control", function()
+  hl.bind("SUPER + R", function()
+    hl.dispatch(hl.dsp.exec_cmd("archi-control-stop"))
+    hl.dispatch(hl.dsp.submap("reset"))
+  end, { description = "Run ArCHi command" })
+
+  hl.bind("ESCAPE", function()
+    hl.dispatch(hl.dsp.exec_cmd("archi-control-cancel"))
+    hl.dispatch(hl.dsp.submap("reset"))
+  end, { description = "Cancel ArCHi command" })
+end)
+</code></pre>
           </div>
         </div>
 
@@ -440,12 +456,15 @@ bindr = $mainMod, SPACE, exec, archi-control-stop</code></pre>
       </div>
 
       <div class="footer-bottom">
-        <span>© Concept Demo Mockup for ArCHi • Clean Architecture Demo</span>
-        <span>Built with low-glare high-contrast accessibility standards.</span>
+        <span>ArCHi · accessibility coordination for Omarchy and Hyprland</span>
+        <span>Demo audio: <a href="https://elevenlabs.io">elevenlabs.io</a> · <a href="../docs/INSTALL.md#optional-custom-voice">Choose a local voice</a></span>
       </div>
     </div>
   </footer>
 
+  <audio id="sim-savvy-matched" src="../media/site-savvy-matched.wav" preload="auto"></audio>
+  <audio id="sim-savvy-complete" src="../media/site-savvy-complete.wav" preload="auto"></audio>
+  <script src="js/commands.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

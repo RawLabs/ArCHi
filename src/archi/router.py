@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import re
 import subprocess
@@ -16,12 +17,12 @@ from pathlib import Path
 
 try:
     from .adapters import ActionResult, select_desktop_adapter
-    from .applications import scan_desktop_apps
+    from .applications import load_app_aliases, scan_desktop_apps
     from .feedback import emit_feedback
     from .text import normalize
 except ImportError:  # Installed router is also executable as a standalone script.
     from adapters import ActionResult, select_desktop_adapter
-    from applications import scan_desktop_apps
+    from applications import load_app_aliases, scan_desktop_apps
     from feedback import emit_feedback
     from text import normalize
 
@@ -46,6 +47,7 @@ RUNTIME_DIR = Path(os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")
 LOG_PATH = Path(os.environ.get("ARCHI_LOG_PATH", Path.home() / ".local" / "state" / "archi" / "commands.jsonl"))
 OFF_RECORD_PATH = RUNTIME_DIR / "off-record"
 PENDING_PATH = RUNTIME_DIR / "pending.json"
+ADJUSTMENT_PATH = RUNTIME_DIR / "adjustment.json"
 ARCHI_BIN_DIR = Path(os.environ.get("ARCHI_BIN_DIR", Path.home() / ".local" / "bin"))
 SPEAK = os.environ.get("ARCHI_TTS_SAY", str(ARCHI_BIN_DIR / "pocket-tts-say"))
 SCHEMA_VERSION = 4
@@ -63,14 +65,19 @@ APP_ACTION_VERBS = {
 def dynamic_app_commands() -> list[dict]:
     """Build open/close commands, omitting aliases shared by multiple apps."""
     apps = scan_desktop_apps()
+    custom_aliases = load_app_aliases()
+    aliases_by_desktop_id = {
+        app.desktop_id: set(app.aliases) | custom_aliases.get(app.desktop_id, set())
+        for app in apps
+    }
     owners: dict[str, set[str]] = {}
     for app in apps:
-        for alias in app.aliases:
+        for alias in aliases_by_desktop_id[app.desktop_id]:
             owners.setdefault(alias, set()).add(app.desktop_id)
 
     commands = []
     for app in apps:
-        aliases = sorted(alias for alias in app.aliases if len(owners[alias]) == 1)
+        aliases = sorted(alias for alias in aliases_by_desktop_id[app.desktop_id] if len(owners[alias]) == 1)
         if not aliases:
             continue
         payload = {**app.action_payload(), "app_aliases": aliases}
@@ -91,7 +98,7 @@ def dynamic_app_commands() -> list[dict]:
                 "capability": "app.close",
                 "payload": payload,
                 "desktop_id": app.desktop_id,
-                "reply": f"Closing {app.name}.",
+                "reply": f"Closed {app.name}.",
             },
         ])
     return commands
@@ -216,10 +223,21 @@ def set_off_record(enabled: bool) -> None:
 def load_pending() -> dict | None:
     try:
         pending = json.loads(PENDING_PATH.read_text())
-    except (FileNotFoundError, json.JSONDecodeError):
+    except (OSError, UnicodeError, json.JSONDecodeError):
         return None
-    if pending.get("expires", 0) <= time.time():
-        PENDING_PATH.unlink(missing_ok=True)
+    if not isinstance(pending, dict):
+        return None
+    expires = pending.get("expires")
+    targets = pending.get("targets")
+    if (
+        isinstance(expires, bool)
+        or not isinstance(expires, (int, float))
+        or not math.isfinite(expires)
+        or expires <= time.time()
+        or not isinstance(pending.get("command_id"), str)
+        or not isinstance(targets, dict)
+        or any(not isinstance(key, str) or not isinstance(value, str) for key, value in targets.items())
+    ):
         return None
     return pending
 
@@ -239,10 +257,57 @@ def clear_pending() -> None:
     PENDING_PATH.unlink(missing_ok=True)
 
 
+def load_adjustment() -> dict | None:
+    try:
+        adjustment = json.loads(ADJUSTMENT_PATH.read_text())
+    except (OSError, UnicodeError, json.JSONDecodeError):
+        return None
+    if not isinstance(adjustment, dict) or adjustment.get("family") not in ("zoom", "volume"):
+        return None
+    expires = adjustment.get("expires")
+    if isinstance(expires, bool) or not isinstance(expires, (int, float)) or not math.isfinite(expires):
+        return None
+    if adjustment["family"] == "zoom" and any(
+        isinstance(adjustment.get(key), bool)
+        or not isinstance(adjustment.get(key), (int, float))
+        or not math.isfinite(adjustment[key])
+        or not 1 <= adjustment[key] <= 10
+        for key in ("origin", "last_factor")
+    ):
+        return None
+    if adjustment.get("expires", 0) <= time.time():
+        return None
+    return adjustment
+
+
+def save_adjustment(family: str, origin: float | None = None, last_factor: float | None = None) -> None:
+    RUNTIME_DIR.mkdir(mode=0o700, parents=True, exist_ok=True)
+    payload = {"family": family, "origin": origin, "last_factor": last_factor, "expires": time.time() + 120}
+    temporary = ADJUSTMENT_PATH.with_suffix(".tmp")
+    temporary.write_text(json.dumps(payload))
+    os.chmod(temporary, 0o600)
+    temporary.replace(ADJUSTMENT_PATH)
+
+
+def clear_adjustment() -> None:
+    ADJUSTMENT_PATH.unlink(missing_ok=True)
+
+
+def current_zoom_factor() -> float | None:
+    try:
+        adapter = select_desktop_adapter(ARCHI_BIN_DIR)
+        return adapter.zoom_factor()
+    except (ValueError, AttributeError):
+        return None
+
+
 def speak(text: str, dry_run: bool) -> None:
     if not text or dry_run:
         return
-    subprocess.run([SPEAK, text], check=False)
+    try:
+        subprocess.run([SPEAK, text], check=False, timeout=130)
+    except (OSError, subprocess.TimeoutExpired) as error:
+        print(f"ArCHi speech unavailable: {error}", file=sys.stderr)
 
 
 def show_feedback(state: str, message: str, duration_ms: int, dry_run: bool) -> None:
@@ -254,10 +319,13 @@ def log_event(event: dict, suppressed: bool) -> None:
     if suppressed:
         return
     event["comparison"] = classify_shadow(event)
-    LOG_PATH.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
-    with LOG_PATH.open("a", encoding="utf-8") as stream:
-        stream.write(json.dumps(event, ensure_ascii=False) + "\n")
-    os.chmod(LOG_PATH, 0o600)
+    try:
+        LOG_PATH.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+        with LOG_PATH.open("a", encoding="utf-8") as stream:
+            stream.write(json.dumps(event, ensure_ascii=False) + "\n")
+        os.chmod(LOG_PATH, 0o600)
+    except OSError as error:
+        print(f"ArCHi diagnostic log unavailable: {error}", file=sys.stderr)
 
 
 def desktop_context() -> dict:
@@ -550,12 +618,15 @@ def route(text: str, dry_run: bool = False) -> dict:
     was_off_record = off_record()
     by_phrase, by_id = load_commands()
     pending = load_pending()
+    adjustment = load_adjustment()
     command = None
     alias = phrase
     clarification_count = 0
 
-    if pending and phrase in {"cancel", "cancel that", "never mind"}:
-        clear_pending()
+    cancellation = phrase in {"cancel", "cancel that", "never mind", "nevermind"}
+    if pending and cancellation:
+        if not dry_run:
+            clear_pending()
         result = {"status": "cancelled", "reply": "Cancelled."}
         show_feedback("cancelled", "Cancelled.", 900, dry_run)
         speak(result["reply"], dry_run)
@@ -569,15 +640,54 @@ def route(text: str, dry_run: bool = False) -> dict:
         log_event(event, was_off_record)
         return result
 
+    if cancellation and not adjustment:
+        reply = "Nothing to cancel."
+        show_feedback("cancelled", reply, 1200, dry_run)
+        speak(reply, dry_run)
+        return {"status": "cancelled", "reply": reply}
+
     if pending:
         target_id = pending.get("targets", {}).get(phrase)
         if target_id:
             command = by_id.get(target_id)
             clarification_count = 1
-            clear_pending()
+            if not dry_run:
+                clear_pending()
 
     if command is None:
         command = by_phrase.get(phrase)
+
+    if command is None and not pending and adjustment and phrase in {"more", "a little more", "increase it", "less", "a little less", "decrease it"}:
+        family = adjustment.get("family")
+        increase = phrase in {"more", "a little more", "increase it"}
+        followups = {
+            "zoom": ("zoom_in", "zoom_less"),
+            "volume": ("volume_up", "volume_down"),
+        }
+        if family in followups:
+            command = by_id.get(followups[family][0 if increase else 1])
+
+    if command is None and cancellation and adjustment:
+        if adjustment.get("family") == "zoom" and adjustment.get("origin") is not None:
+            last_factor = adjustment.get("last_factor")
+            actual_factor = current_zoom_factor() if not dry_run else last_factor
+            if last_factor is not None and actual_factor is not None and abs(actual_factor - last_factor) > 0.01:
+                if not dry_run:
+                    clear_adjustment()
+                reply = "Zoom changed elsewhere. I left it as it is."
+                show_feedback("cancelled", reply, 2200, dry_run)
+                speak(reply, dry_run)
+                return {"status": "cancelled", "reply": reply}
+            restore = by_id.get("zoom_restore")
+            if restore:
+                command = {**restore, "payload": {"factor": adjustment["origin"]}}
+        else:
+            if not dry_run:
+                clear_adjustment()
+            reply = "Cancelled."
+            show_feedback("cancelled", reply, 900, dry_run)
+            speak(reply, dry_run)
+            return {"status": "cancelled", "reply": reply}
 
     if command is None:
         resolved_app = resolve_dynamic_app(phrase, by_id)
@@ -600,6 +710,8 @@ def route(text: str, dry_run: bool = False) -> dict:
 
     command_id = command["id"]
     action = command.get("action")
+    if pending and not dry_run:
+        clear_pending()
 
     if action == "clarify":
         if not dry_run:
@@ -631,21 +743,47 @@ def route(text: str, dry_run: bool = False) -> dict:
         return {"status": "logging_on", "command_id": command_id}
 
     reply = command.get("reply", "")
+    capability = command.get("capability", "")
+    zoom_origin = None
+    if capability in {"visual.zoom.in", "visual.zoom.out"} and (not adjustment or adjustment.get("family") != "zoom") and not dry_run:
+        zoom_origin = current_zoom_factor()
     if command.get("reply_before"):
         speak(reply, dry_run)
     execution = execute(command, dry_run)
     success = execution.succeeded
-    if success and not command.get("reply_before"):
+    if success and execution.detail == "zoom already at requested level":
+        reply = "Zoom is already at that level."
+    if success and not dry_run:
+        if capability in {"visual.zoom.in", "visual.zoom.out"}:
+            origin = adjustment.get("origin") if adjustment and adjustment.get("family") == "zoom" else zoom_origin
+            last_factor = current_zoom_factor()
+            if origin is not None and last_factor is not None:
+                save_adjustment("zoom", origin, last_factor)
+            else:
+                clear_adjustment()
+        elif capability == "visual.zoom.reset" or capability == "visual.zoom.restore":
+            clear_adjustment()
+        elif capability in {"audio.volume.raise", "audio.volume.lower"}:
+            save_adjustment("volume")
+        else:
+            clear_adjustment()
+    needs_attention = execution.status == "attention"
+    if needs_attention:
+        app_name = command.get("payload", {}).get("app_name")
+        reply = f"{app_name} needs attention." if app_name else "That application needs attention."
         speak(reply, dry_run)
-    if not success:
-        reply = "That command failed."
+        show_feedback("attention", reply, 3500, dry_run)
+    elif success and not command.get("reply_before"):
+        speak(reply, dry_run)
+    if not success and not needs_attention:
+        reply = "Omarchy zoom is unavailable." if capability.startswith("visual.zoom.") and execution.status == "unavailable" else "That command failed."
         speak(reply, dry_run)
         show_feedback("failed", reply, 3000, dry_run)
-    else:
-        show_feedback("success", reply or "Command complete.", 1300, dry_run)
+    elif success:
+        show_feedback("cancelled" if command_id == "zoom_restore" else "success", reply or "Command complete.", 1300, dry_run)
 
     result = {
-        "status": "success" if success else "failed",
+        "status": "cancelled" if success and command_id == "zoom_restore" else "success" if success else "attention" if needs_attention else "failed",
         "command_id": command_id,
         "reply": reply,
         "capability": command.get("capability"),

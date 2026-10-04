@@ -32,13 +32,17 @@ def main() -> int:
         print(f"Could not read ArCHi registry {registry}: {error}")
         return 1
 
-    print("ArCHi testing key map")
+    print("ArCHi suggested testing key map (configure these bindings manually)")
     for keys, purpose in BINDINGS:
         print(f"  {keys:<27} {purpose}")
     print("\nAccepted production commands (say one phrase exactly)")
     for command in commands:
+        if not command.get("phrases"):
+            continue
         phrases = " | ".join(command.get("phrases", []))
         print(f"  {command['id']:<22} {phrases}")
+    print("\nInstalled apps: say open/launch/start or close/quit/exit plus an unambiguous app name.")
+    print("Zoom/volume follow-ups: more, less, increase it, decrease it; cancel ends the adjustment.")
     print("\nDetailed test matrix: docs/TESTING.md")
     return 0
 

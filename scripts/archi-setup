@@ -1,0 +1,66 @@
+#!/usr/bin/env bash
+# Install ArCHi's packaged runtime into the invoking user's XDG locations.
+set -euo pipefail
+
+system_home="${ARCHI_SYSTEM_HOME:-/usr/lib/archi}"
+bin_dir="${ARCHI_BIN_DIR:-$HOME/.local/bin}"
+data_dir="${ARCHI_HOME:-$HOME/.local/share/archi}"
+refresh_registry=false
+
+case "${1:-}" in
+  "") ;;
+  --refresh-registry) refresh_registry=true ;;
+  --help|-h)
+    printf 'Usage: %s [--refresh-registry]\n' "$0"
+    printf 'Installs packaged ArCHi files for the current user.\n'
+    printf '  --refresh-registry  Back up and replace the active command registry.\n'
+    exit 0
+    ;;
+  *)
+    printf 'Unknown option: %s\n' "$1" >&2
+    exit 2
+    ;;
+esac
+
+if [[ ! -d "$system_home/src/archi" || ! -d "$system_home/scripts" || ! -d "$system_home/config" ]]; then
+  printf 'ArCHi package files are missing from %s. Reinstall the package.\n' "$system_home" >&2
+  exit 1
+fi
+
+install -d -m 755 "$bin_dir" "$data_dir" "$data_dir/adapters"
+install -m 755 "$system_home/scripts"/* "$bin_dir/"
+install -m 644 "$system_home/src/archi"/*.py "$data_dir/"
+install -m 644 "$system_home/src/archi/adapters"/*.py "$data_dir/adapters/"
+install -m 644 "$system_home/config/commands.toml" "$data_dir/commands.default.toml"
+install -m 644 "$system_home/config/intents.yaml" "$data_dir/intents.yaml"
+
+if [[ ! -e "$data_dir/commands.toml" ]]; then
+  install -m 644 "$system_home/config/commands.toml" "$data_dir/commands.toml"
+elif [[ "$refresh_registry" == true ]]; then
+  registry_backup="$data_dir/commands.toml.bak.$(date +%Y%m%d%H%M%S)"
+  install -m 600 "$data_dir/commands.toml" "$registry_backup"
+  install -m 644 "$system_home/config/commands.toml" "$data_dir/commands.toml"
+  printf 'Backed up previous command registry: %s\n' "$registry_backup"
+else
+  printf 'Kept existing command registry: %s\n' "$data_dir/commands.toml"
+  printf 'Review updated defaults at %s/commands.default.toml.\n' "$data_dir"
+fi
+
+printf 'Installed ArCHi for %s.\n' "$USER"
+if [[ -x "$bin_dir/archi-system-profile" ]]; then
+  profile_output="$("$bin_dir/archi-system-profile" 2>/dev/null || true)"
+  profile="$(printf '%s\n' "$profile_output" | tail -n 1)"
+  printf '%s\n' "$profile_output" | head -n 1
+  case "$profile" in
+    below-tested-voice-minimum)
+      printf 'Voice guidance: this machine is below the tested minimum; use a lightweight TTS helper such as espeak-ng.\n'
+      ;;
+    minimum-voice-system)
+      printf 'Voice guidance: this is the tested minimum; prefer Piper over the memory-heavy Pocket TTS service.\n'
+      ;;
+    recommended-voice-system)
+      printf 'Voice guidance: this machine meets the recommended local-voice target.\n'
+      ;;
+  esac
+fi
+printf 'Run archi-doctor, then add the optional keybinding from INSTALL.md.\n'

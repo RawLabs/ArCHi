@@ -26,4 +26,4 @@ if ! iconv -f UTF-8 -t UTF-8 "$snapshot" >/dev/null 2>&1 ||
   exit 1
 fi
 
-"$archi_bin_dir/pocket-tts-say" < "$snapshot"
+"${ARCHI_TTS_SAY:-$archi_bin_dir/pocket-tts-say}" "$(<"$snapshot")"

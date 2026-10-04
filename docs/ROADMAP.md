@@ -4,6 +4,15 @@ This roadmap turns the current Omarchy voice-command prototype into an
 accessibility harness without pretending that every Linux accessibility service
 belongs inside ArCHi.
 
+## Current product priority
+
+Make ArCHi a useful, local voice assistant for existing Omarchy controls.
+Start with natural phrases and bounded follow-ups for native zoom and volume;
+extend the same pattern only where it reduces real computer-use friction.
+The broad provider broker below is a possible future architecture, not the
+next delivery gate. The magnifier plugin PoC at the end is parked because
+Omarchy already provides native zoom. See [voice controls](VOICE_CONTROLS.md).
+
 ## Where ArCHi is now
 
 The current prototype has already validated several important properties:
@@ -157,7 +166,9 @@ These are adapters, not new execution paths through the core.
 
 ## Immediate issue sequence
 
-The next implementation work should stay small and sequential:
+First validate the current zoom, volume, app matching, and close feedback on
+fresh Omarchy installations. The broader architecture sequence below is
+parked until that voice-control scope is stable:
 
 1. Extend the initial desktop adapter protocol into the provider registry.
 2. Keep the legacy argv executor limited to ArCHi-owned helpers.
@@ -171,7 +182,7 @@ The next implementation work should stay small and sequential:
 Do not begin vision, synthetic pointer input, sign recognition, or a broad
 profile UI until those eight steps have established the control-plane seam.
 
-## First plugin proof of concept
+## Parked plugin proof of concept
 
 The first capability plugin PoC is the screen magnifier. It is intentionally
 scoped as provider discovery, provider selection, OS-package installation, and

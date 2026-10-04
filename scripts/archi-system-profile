@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+# Classify this machine against the tested ArCHi local-voice profiles.
+set -u
+
+memory_kib="${ARCHI_TOTAL_MEMORY_KIB:-}"
+logical_cpus="${ARCHI_LOGICAL_CPUS:-}"
+cpu_flags="${ARCHI_CPU_FLAGS:-}"
+available_kib="${ARCHI_AVAILABLE_DISK_KIB:-}"
+
+if [[ -z "$memory_kib" ]]; then
+  memory_kib="$(awk '/^MemTotal:/ { print $2; exit }' /proc/meminfo 2>/dev/null || true)"
+fi
+if [[ -z "$logical_cpus" ]]; then
+  logical_cpus="$(getconf _NPROCESSORS_ONLN 2>/dev/null || true)"
+fi
+if [[ -z "$cpu_flags" ]]; then
+  cpu_flags="$(awk -F: '/^flags/ { print $2; exit }' /proc/cpuinfo 2>/dev/null || true)"
+fi
+if [[ -z "$available_kib" ]]; then
+  available_kib="$(df -Pk "${HOME:-.}" 2>/dev/null | awk 'NR == 2 { print $4 }')"
+fi
+
+memory_mib=$(( ${memory_kib:-0} / 1024 ))
+memory_display="$(( memory_mib / 1024 )).$(( (memory_mib % 1024) * 10 / 1024 ))"
+disk_gib=$(( ${available_kib:-0} / 1024 / 1024 ))
+avx2=false
+if [[ " $cpu_flags " == *" avx2 "* ]]; then
+  avx2=true
+fi
+
+printf 'System profile: %s GiB RAM, %s logical CPU%s, AVX2: %s, %s GiB free disk\n' \
+  "$memory_display" "${logical_cpus:-0}" "$([[ ${logical_cpus:-0} == 1 ]] || printf 's')" "$avx2" "$disk_gib"
+
+# A marketed 8 GB laptop commonly reports about 7.7 GiB after firmware-reserved
+# memory. Treat 7.5 GiB as the tested 8 GB class.
+if (( memory_mib < 7680 || ${logical_cpus:-0} < 4 )) || [[ "$avx2" != true ]]; then
+  printf 'below-tested-voice-minimum\n'
+  exit 0
+fi
+
+if (( memory_mib >= 16384 && ${logical_cpus:-0} >= 8 && disk_gib >= 8 )); then
+  printf 'recommended-voice-system\n'
+else
+  printf 'minimum-voice-system\n'
+fi

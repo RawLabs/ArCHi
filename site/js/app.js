@@ -1,191 +1,8 @@
 /**
- * ArCHi Web Mockup — Interactive Controller
- * Clean, lightweight, zero-dependency JavaScript
+ * ArCHi browser demonstration and command reference.
  */
 
-// Command Registry Database (mirrors config/commands.toml)
-const ARCHI_COMMANDS = [
-  {
-    id: "open_terminal",
-    category: "apps",
-    phrases: ["open terminal", "launch terminal", "start terminal"],
-    action: "launch",
-    argv: '["omarchy-launch-terminal"]',
-    reply: "Opening terminal.",
-    description: "Launches the configured terminal emulator via Omarchy launcher."
-  },
-  {
-    id: "open_browser",
-    category: "apps",
-    phrases: ["open browser", "launch browser", "start browser", "open web browser"],
-    action: "launch",
-    argv: '["omarchy-launch-browser"]',
-    reply: "Opening browser.",
-    description: "Launches the default web browser."
-  },
-  {
-    id: "open_default_agent",
-    category: "apps",
-    phrases: ["open agent", "launch agent", "start agent", "open omarchy agent"],
-    action: "launch",
-    argv: '["omarchy-agent"]',
-    reply: "Opening the default Omarchy agent.",
-    description: "Invokes the default local Omarchy AI coding/system agent."
-  },
-  {
-    id: "open_files",
-    category: "apps",
-    phrases: ["open files", "open file manager", "launch file manager", "start files"],
-    action: "launch",
-    argv: '["omarchy-launch-nautilus"]',
-    reply: "Opening files.",
-    description: "Opens Nautilus / default file manager."
-  },
-  {
-    id: "open_home",
-    category: "apps",
-    phrases: ["open home", "open home folder", "open my home folder"],
-    action: "launch",
-    argv: '["xdg-open", "{home}"]',
-    reply: "Opening home.",
-    description: "Opens user's $HOME directory in default file manager."
-  },
-  {
-    id: "open_downloads",
-    category: "apps",
-    phrases: ["open downloads", "open downloads folder"],
-    action: "launch",
-    argv: '["xdg-open", "{home}/Downloads"]',
-    reply: "Opening downloads.",
-    description: "Opens the Downloads folder."
-  },
-  {
-    id: "volume_up",
-    category: "audio",
-    phrases: ["volume up", "turn volume up", "make it louder", "louder"],
-    action: "run",
-    argv: '["omarchy-audio-output-volume", "raise"]',
-    reply: "Volume up.",
-    description: "Raises master audio output volume with OSD overlay."
-  },
-  {
-    id: "volume_down",
-    category: "audio",
-    phrases: ["volume down", "turn volume down", "make it quieter", "quieter"],
-    action: "run",
-    argv: '["omarchy-audio-output-volume", "lower"]',
-    reply: "Volume down.",
-    description: "Lowers master audio output volume with OSD overlay."
-  },
-  {
-    id: "mute",
-    category: "audio",
-    phrases: ["mute", "mute audio", "mute volume"],
-    action: "run",
-    argv: '["omarchy-audio-output-volume", "mute-toggle"]',
-    reply: "Audio mute toggled.",
-    description: "Toggles audio mute state."
-  },
-  {
-    id: "read_clipboard",
-    category: "readout",
-    phrases: ["read clipboard", "read clipboard aloud", "read this aloud", "speak clipboard"],
-    action: "launch",
-    argv: '["pocket-tts-read-clipboard"]',
-    reply: "(Reads textual clipboard aloud via Pocket TTS)",
-    description: "Safely reads plain text from wl-clipboard using local Pocket TTS with output stream ducking."
-  },
-  {
-    id: "stop_speaking",
-    category: "readout",
-    phrases: ["stop speaking", "stop talking", "shut up", "silence", "cancel speech"],
-    action: "run",
-    argv: '["archi-stop-speaking"]',
-    reply: "",
-    description: "Immediately stops active speech synthesis and restores background stream volume."
-  },
-  {
-    id: "close_active_window",
-    category: "windows",
-    phrases: ["close this window", "close current window", "close active window", "close window"],
-    action: "run",
-    argv: '["hyprctl", "dispatch", "hl.dsp.window.close()"]',
-    reply: "Closing window.",
-    description: "Closes the focused Hyprland window."
-  },
-  {
-    id: "close_terminal",
-    category: "windows",
-    phrases: ["close terminal", "quit terminal", "exit terminal"],
-    action: "run",
-    argv: '["archi-close-target", "terminal"]',
-    reply: "Closing terminal.",
-    description: "Closes running terminal instance safely."
-  },
-  {
-    id: "close_clarify",
-    category: "windows",
-    phrases: ["close", "quit", "exit", "dismiss"],
-    action: "clarify",
-    argv: 'Targets: terminal, browser, files, window',
-    reply: "What should I close: terminal, browser, files, or this window?",
-    description: "Prompts for target clarification when a bare close command is uttered."
-  },
-  {
-    id: "next_workspace",
-    category: "windows",
-    phrases: ["next workspace", "switch to next workspace"],
-    action: "run",
-    argv: '["hyprctl", "dispatch", "hl.dsp.focus({ workspace = \\"e+1\\" })"]',
-    reply: "Next workspace.",
-    description: "Navigates to next workspace in Hyprland."
-  },
-  {
-    id: "previous_workspace",
-    category: "windows",
-    phrases: ["previous workspace", "last workspace", "switch to previous workspace"],
-    action: "run",
-    argv: '["hyprctl", "dispatch", "hl.dsp.focus({ workspace = \\"e-1\\" })"]',
-    reply: "Previous workspace.",
-    description: "Navigates to previous workspace in Hyprland."
-  },
-  {
-    id: "take_screenshot",
-    category: "system",
-    phrases: ["take screenshot", "take a screenshot", "screenshot", "capture screenshot"],
-    action: "launch",
-    argv: '["omarchy-capture-screenshot"]',
-    reply: "Taking a screenshot.",
-    description: "Captures screen region or full screen using Omarchy screenshot utility."
-  },
-  {
-    id: "lock_computer",
-    category: "system",
-    phrases: ["lock computer", "lock the computer", "lock screen"],
-    action: "run",
-    argv: '["loginctl", "lock-session"]',
-    reply: "Locking computer.",
-    description: "Locks the active session with loginctl."
-  },
-  {
-    id: "off_record",
-    category: "system",
-    phrases: ["off record", "off the record", "private mode"],
-    action: "mode",
-    argv: '["archi-mode-toggle", "off_record"]',
-    reply: "Logging off.",
-    description: "Pauses diagnostic transcript recording for sensitive tasks."
-  },
-  {
-    id: "logging_on",
-    category: "system",
-    phrases: ["logging on", "back on record", "resume logging"],
-    action: "mode",
-    argv: '["archi-mode-toggle", "logging_on"]',
-    reply: "Logging on.",
-    description: "Resumes local diagnostic JSONL command logging."
-  }
-];
+// The catalog is generated from config/commands.toml in commands.js.
 
 document.addEventListener('DOMContentLoaded', () => {
   initA11yControls();
@@ -251,11 +68,50 @@ function initSimulator() {
   const ttsStep = document.getElementById('sim-step-tts');
   const statusDot = document.getElementById('sim-status-dot');
   const statusText = document.getElementById('sim-status-text');
+  const voiceFeedback = document.getElementById('sim-voice-feedback');
+  const voiceText = document.getElementById('sim-voice-text');
+  const savvyMatched = document.getElementById('sim-savvy-matched');
+  const savvyComplete = document.getElementById('sim-savvy-complete');
 
   let isRecording = false;
+  let simulationTimers = [];
+  let savvyPrimed = false;
+
+  function primeSavvyAudio() {
+    if (savvyPrimed || !savvyMatched) return;
+    savvyMatched.muted = true;
+    savvyMatched.play().then(() => {
+      savvyMatched.pause();
+      savvyMatched.currentTime = 0;
+      savvyMatched.muted = false;
+      savvyPrimed = true;
+    }).catch(() => {
+      savvyMatched.muted = false;
+    });
+  }
+
+  function speakSavvy(track, text) {
+    if (voiceFeedback && voiceText) {
+      voiceText.textContent = text;
+      voiceFeedback.hidden = false;
+    }
+    [savvyMatched, savvyComplete].forEach(audio => {
+      if (audio) {
+        audio.pause();
+        audio.currentTime = 0;
+      }
+    });
+    if (track) {
+      track.volume = 0.75;
+      track.play().catch(() => {});
+    }
+  }
 
   function runSimulatedCommand(phrase) {
     if (!phrase) phrase = "volume up";
+    simulationTimers.forEach(clearTimeout);
+    simulationTimers = [];
+    primeSavvyAudio();
 
     // Set UI to listening
     if (statusDot) statusDot.classList.add('active');
@@ -266,17 +122,24 @@ function initSimulator() {
     argvStep.textContent = "Waiting...";
     ttsStep.textContent = "Waiting...";
 
-    setTimeout(() => {
+    simulationTimers.push(setTimeout(() => {
       // Find command match
       const cleanPhrase = phrase.toLowerCase().trim();
-      const match = ARCHI_COMMANDS.find(cmd => 
-        cmd.phrases.some(p => cleanPhrase.includes(p) || p.includes(cleanPhrase))
-      ) || ARCHI_COMMANDS[0];
+      const match = ARCHI_COMMANDS.find(cmd => cmd.phrases.includes(cleanPhrase));
+      if (!match) {
+        routerStep.textContent = "No match in this operational-command demo. App names are discovered on your desktop.";
+        argvStep.textContent = "No action.";
+        ttsStep.textContent = "I don't know that command yet.";
+        if (statusText) statusText.textContent = "Idle — Ready";
+        if (statusDot) statusDot.classList.remove('active');
+        return;
+      }
 
       routerStep.textContent = `✅ Matched ID: ${match.id} (Action: ${match.action})`;
-      argvStep.textContent = `⚙️ Executing: ${match.argv}`;
+      argvStep.textContent = `⚙️ Simulated operation: ${match.argv}`;
+      speakSavvy(savvyMatched, 'Matched a known, allowlisted action.');
       
-      setTimeout(() => {
+      simulationTimers.push(setTimeout(() => {
         if (match.reply) {
           ttsStep.textContent = `🔊 Pocket TTS: "${match.reply}" [PipeWire ducking applied]`;
         } else {
@@ -284,9 +147,10 @@ function initSimulator() {
         }
         if (statusText) statusText.textContent = "Idle — Ready for Push-to-Talk";
         if (statusDot) statusDot.classList.remove('active');
-      }, 400);
+        speakSavvy(savvyComplete, match.action === 'clarify' ? 'Waiting for your choice.' : 'Demo complete.');
+      }, 3000));
 
-    }, 350);
+    }, 350));
   }
 
   if (pttBtn) {
@@ -387,7 +251,7 @@ function initCommandCatalog() {
         </div>
 
         <div>
-          <div style="font-size: 0.72rem; color: var(--text-dim); text-transform: uppercase; font-weight: 700; margin-bottom: 0.25rem;">Argv Execution</div>
+          <div style="font-size: 0.72rem; color: var(--text-dim); text-transform: uppercase; font-weight: 700; margin-bottom: 0.25rem;">Operation</div>
           <div class="cmd-argv-preview"><code>${escapeHtml(cmd.argv)}</code></div>
           ${cmd.reply ? `
             <div style="margin-top: 0.5rem;" class="cmd-reply-preview">
@@ -414,7 +278,9 @@ function initCommandCatalog() {
   filterChips.forEach(chip => {
     chip.addEventListener('click', () => {
       filterChips.forEach(c => c.classList.remove('active'));
+      filterChips.forEach(c => c.setAttribute('aria-checked', 'false'));
       chip.classList.add('active');
+      chip.setAttribute('aria-checked', 'true');
       activeCategory = chip.getAttribute('data-category');
       renderCommands();
     });
@@ -433,9 +299,11 @@ function initDocsTabs() {
   tabs.forEach(tab => {
     tab.addEventListener('click', () => {
       tabs.forEach(t => t.classList.remove('active'));
+      tabs.forEach(t => t.setAttribute('aria-selected', 'false'));
       panes.forEach(p => p.classList.remove('active'));
 
       tab.classList.add('active');
+      tab.setAttribute('aria-selected', 'true');
       const targetId = tab.getAttribute('data-tab-target');
       const targetPane = document.getElementById(targetId);
       if (targetPane) {

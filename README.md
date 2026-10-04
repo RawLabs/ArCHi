@@ -5,10 +5,10 @@
 </p>
 
 **ArCHi — Artificial Restorative Computer Harness Intelligence** ($A^r \cdot CH^i$) — is a local,
-deterministic accessibility control plane for Linux. It is intended to
-coordinate the accessibility and desktop services a person already has, choose
-the safest available way to satisfy a request, and return the result through
-the person's preferred interaction channels.
+deterministic voice assistant for Omarchy. It turns short, natural requests into
+existing desktop actions, keeps enough context for follow-ups, and reports the
+result. Recognition and speech run locally; command selection uses an inspectable
+allowlist and requires no chatbot or paid API.
 
 ArCHi is the everyday brand name, while the conceptual reading **AʳCHⁱ** encapsulates its three architectural pillars:
 
@@ -45,11 +45,15 @@ It currently:
   phonetic equivalence;
 - stops and submits capture with the same `Super+R` toggle or the active-only
   spoken terminator “ArCHi stop”;
-- provides spoken responses through a local Pocket TTS-compatible endpoint;
+- provides spoken responses through a configurable local TTS helper or a
+  Pocket TTS-compatible endpoint;
 - keeps ArCHi's spoken-response volume separate from system volume and shows
   an Omarchy OSD volume indicator;
 - supports read-aloud, system audio, windows, screenshots, and workspace
   actions through the `omarchy.hyprland` adapter;
+- controls Omarchy's native screen zoom with phrases such as `zoom`, `more`,
+  `less`, `zoom out`, and `cancel`. Short follow-ups also work after a volume
+  command; see [voice controls](docs/VOICE_CONTROLS.md);
 - records local command diagnostics by default, with an “off record” command;
 - shows short, transparent command-status overlays through the selected desktop
   adapter. On Omarchy these use `omarchy-osd`, not the system notification
@@ -63,6 +67,11 @@ Dispatcher, braille, portals/libei, or vision fallback. See the
 [platform support policy](docs/SUPPORT.md) and [roadmap](docs/ROADMAP.md).
 
 ## Direction
+
+The near-term product is natural voice control of Omarchy's existing features.
+ArCHi should add context and accessible feedback around those features, not
+rebuild zoom, dictation, or desktop settings. The broader provider architecture
+below is a longer-term option, not a prerequisite for useful voice controls.
 
 The target architecture separates five provider roles:
 
@@ -130,8 +139,26 @@ See [beta operations](docs/BETA.md) for the supported scope and test loop.
 - [Voxtype](https://github.com/peteonrails/voxtype) for local voice capture
 - PipeWire tools: `pw-play`, `pw-record`, `wpctl`, and `pw-dump`
 - `curl`, `jq`, `wl-clipboard`, and `hyprctl`
-- a Pocket TTS-compatible HTTP endpoint (defaults to
-  `http://127.0.0.1:8000/tts`)
+- `gtk-launch` (GTK 3), `xdg-open` (`xdg-utils`), `pactl` (`libpulse`),
+  `flock` (`util-linux`), and `iconv` for application launching, mute control,
+  speech locking, and text validation
+- a local TTS backend: Pocket TTS-compatible HTTP endpoint (the default,
+  `http://127.0.0.1:8000/tts`) or an executable set in `ARCHI_TTS_SAY`
+
+### Local voice hardware profiles
+
+The package and non-voice commands are light. The optional local voice stack is
+not: on the tested low-end system, Voxtype used roughly 285 MB after warm-up and
+Pocket TTS used roughly 1.1 GB resident memory.
+
+| Profile | Tested guidance | Speech output |
+| --- | --- | --- |
+| Below minimum | Fewer than 4 logical CPUs, less than 8 GiB RAM, or no AVX2 | Use `espeak-ng` when speech is needed; voice capture can be slow. |
+| Minimum | 4 logical CPUs, 8 GB RAM class (about 7.5 GiB reported), AVX2, and SSD storage | Use Piper for a balanced local voice. Expect several seconds of transcription latency after recording stops. |
+| Recommended | 8 logical CPUs, 16 GiB RAM, and 8 GiB free SSD space | Pocket TTS is practical when its higher memory use is acceptable. |
+
+Run `archi-doctor` after setup to see the detected profile and active TTS path.
+The profile is advisory: it never prevents use of a configured local backend.
 
 `hassil` is optional. When installed, it only compares parsing results for
 diagnostics; it does not execute commands.
@@ -161,6 +188,8 @@ Useful override variables:
 - `ARCHI_COMMANDS_PATH`: command registry path;
 - `ARCHI_APPLICATION_DIRS`: optional colon-separated desktop-entry directories
   used instead of the standard XDG, Flatpak, and Snap locations;
+- `ARCHI_APP_ALIASES_PATH`: optional local spoken-app alias registry, default
+  `${XDG_CONFIG_HOME:-$HOME/.config}/archi/app-aliases.toml`;
 - `ARCHI_DESKTOP_ADAPTER`: desktop integration ID, currently `omarchy` or
   `omarchy.hyprland`;
 - `ARCHI_INTENTS_PATH`: independent HassIL diagnostic grammar path;
@@ -225,6 +254,8 @@ accepted phrase, and the prototype test matrix. See the
 The [platform support policy](docs/SUPPORT.md) defines tested compatibility.
 The first planned provider-selection plugin is specified in
 [the magnifier PoC](docs/MAGNIFIER_PLUGIN_POC.md).
+The near-term, bounded beta extensions are documented in
+[Beta+ delivery path](docs/BETA_PLUS.md).
 
 ## Before release beyond beta
 

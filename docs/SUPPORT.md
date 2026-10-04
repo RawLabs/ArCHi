@@ -25,7 +25,7 @@ A desktop adapter:
 
 - identifies itself with a stable provider ID;
 - advertises supported capability IDs;
-- returns structured `success`, `unsupported`, `unavailable`, or `failed`
+- returns structured `success`, `attention`, `unsupported`, `unavailable`, or `failed`
   results;
 - captures only the desktop context owned by that integration;
 - contains every compositor- or distribution-specific command;

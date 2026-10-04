@@ -1,0 +1,39 @@
+# Maintainer: ArCHi contributors
+pkgname=archi-assist-beta
+pkgver=0.1.0b1
+pkgrel=1
+pkgdesc="Local deterministic accessibility control plane for Omarchy/Hyprland (beta)"
+arch=('any')
+license=('custom:pending')
+depends=('bash' 'python' 'curl' 'jq' 'wl-clipboard' 'pipewire' 'wireplumber' 'gtk3' 'xdg-utils' 'libpulse' 'util-linux')
+optdepends=(
+  'hyprland: Hyprland desktop control via hyprctl'
+  'voxtype: explicit local voice capture'
+  'omarchy: supported Omarchy desktop integration and OSD feedback'
+  'pocket-tts: local Pocket TTS-compatible speech endpoint'
+  'hassil: optional diagnostic-only intent comparison'
+)
+source=()
+sha256sums=()
+
+package() {
+  local source_root="$startdir/../.."
+  local system_root="$pkgdir/usr/lib/archi"
+
+  install -d "$system_root/src/archi/adapters" "$system_root/scripts" "$system_root/config"
+  install -m 644 "$source_root"/src/archi/*.py "$system_root/src/archi/"
+  install -m 644 "$source_root"/src/archi/adapters/*.py "$system_root/src/archi/adapters/"
+  local script
+  for script in "$source_root"/scripts/*; do
+    [[ -f "$script" ]] || continue
+    install -m 755 "$script" "$system_root/scripts/"
+  done
+  install -m 644 "$source_root"/config/commands.toml "$source_root"/config/intents.yaml "$system_root/config/"
+
+  install -Dm755 "$source_root/scripts/archi-setup" "$pkgdir/usr/bin/archi-setup"
+  install -Dm755 "$source_root/scripts/archi-doctor" "$pkgdir/usr/bin/archi-doctor"
+  install -Dm644 "$source_root/README.md" "$pkgdir/usr/share/doc/$pkgname/README.md"
+  install -Dm644 "$source_root/docs/INSTALL.md" "$pkgdir/usr/share/doc/$pkgname/INSTALL.md"
+  install -Dm644 "$source_root/docs/BETA.md" "$pkgdir/usr/share/doc/$pkgname/BETA.md"
+  install -Dm644 "$source_root/LICENSE-PENDING.md" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

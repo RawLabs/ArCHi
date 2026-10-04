@@ -1,5 +1,25 @@
 # Installation notes
 
+Use the source installer or the Arch beta package below. The Python wheel
+contains the core modules only; `pip install` does not install the desktop
+helpers or operational registry.
+
+## Packaged beta on Omarchy / Arch
+
+For a transferable beta build, install the `archi-assist-beta-*.pkg.tar.zst`
+archive with `sudo pacman -U /path/to/archive.pkg.tar.zst`.  Then, as the
+desktop user who will test ArCHi, run:
+
+```bash
+archi-setup
+archi-doctor
+```
+
+The package itself only installs shared program files. `archi-setup` places
+the current runtime under the user's XDG directories and preserves an existing
+command registry, local spoken aliases, logs, and private voice sample during
+upgrades. Continue with the optional keybinding below after the readiness check.
+
 Run `./install.sh` from a checked-out ArCHi source tree. The installer copies
 the router, adapter modules, default command profile, independent diagnostic
 grammar, and helper scripts into standard XDG user locations. It never writes to
@@ -20,6 +40,31 @@ Defaults:
 The current prototype defaults to `ARCHI_DESKTOP_ADAPTER=omarchy`. Other values
 are rejected until a corresponding tested adapter exists. This prevents an
 untested desktop from receiving Omarchy or Hyprland commands accidentally.
+
+## Hardware and speech-backend guidance
+
+`archi-setup` and `archi-doctor` inspect RAM, online logical CPUs, AVX2 support,
+and available disk space. The result is advisory and does not upload machine
+information or block installation.
+
+- Below 4 logical CPUs, 8 GiB RAM, or without AVX2: use `espeak-ng` if speech
+  output is required; local transcription can be slow.
+- At the tested minimum (4 logical CPUs, 8 GB RAM class / about 7.5 GiB
+  reported, AVX2, SSD): use Piper via
+  `ARCHI_TTS_SAY`; do not expect Pocket TTS to be comfortable because its
+  persistent service can use about 1.1 GiB RAM.
+- At the recommended target (8 logical CPUs, 16 GiB RAM, 8 GiB free SSD): the
+  default Pocket TTS endpoint is suitable when its higher quality is preferred.
+
+To select an executable helper instead of the Pocket TTS endpoint, set it in
+your user environment before starting ArCHi:
+
+```bash
+export ARCHI_TTS_SAY=/path/to/archi-piper-say
+```
+
+`archi-doctor` reports that helper when it is executable; otherwise it checks
+the default Pocket TTS endpoint.
 
 To add ArCHi's toggle-to-talk binding, add the following to your personal
 `~/.config/hypr/bindings.lua` and reload Hyprland:
@@ -92,6 +137,28 @@ the normal Omarchy audio bindings.
 ArCHi shows brief `Listening`, `Heard`, and outcome overlays through
 `omarchy-osd`. They are not notification-center entries and do not take focus.
 Set `ARCHI_FEEDBACK=off` before starting capture to disable these overlays.
+
+For local conversational controls such as `zoom`, `more`, `less`, `zoom out`,
+and `cancel`, see [voice controls](VOICE_CONTROLS.md). Existing installations
+keep their active command registry; use `./install.sh --refresh-registry` after
+reviewing the new defaults to enable newly added phrases.
+
+### Correcting a repeated app-name transcription
+
+Application commands are discovered from installed desktop entries.  If local
+speech recognition consistently hears an app name differently, add a local
+spoken alias rather than changing ArCHi source or an installed package:
+
+```bash
+archi-app-alias add omawrite.desktop "oma right"
+```
+
+Then `close oma right` and `open oma right` resolve to the currently installed
+`omawrite.desktop` entry.  The registry is stored at
+`${XDG_CONFIG_HOME:-$HOME/.config}/archi/app-aliases.toml`; it persists across
+ArCHi installs.  Use `archi-app-alias list` to inspect aliases and
+`archi-app-alias remove omawrite.desktop "oma right"` to remove one.  ArCHi
+rejects an alias shared by two installed applications rather than guessing.
 
 Use `hyprctl reload` followed by `hyprctl configerrors` after changing the
 binding file.

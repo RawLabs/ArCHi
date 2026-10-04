@@ -1,0 +1,97 @@
+#!/usr/bin/env python3
+"""Maintain user-owned spoken aliases for dynamically discovered desktop apps."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import sys
+import tempfile
+import tomllib
+from pathlib import Path
+
+
+source_modules = Path(__file__).resolve().parents[1] / "src" / "archi"
+installed_modules = Path(os.environ.get("ARCHI_HOME", Path.home() / ".local" / "share" / "archi"))
+sys.path.insert(0, str(source_modules if source_modules.is_dir() else installed_modules))
+from text import normalize
+
+
+def aliases_path() -> Path:
+    config_home = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config"))
+    return Path(os.environ.get("ARCHI_APP_ALIASES_PATH", config_home / "archi" / "app-aliases.toml"))
+
+
+def load(path: Path) -> list[dict[str, str]]:
+    try:
+        with path.open("rb") as stream:
+            entries = tomllib.load(stream).get("aliases", [])
+    except FileNotFoundError:
+        return []
+    except (OSError, tomllib.TOMLDecodeError) as error:
+        raise SystemExit(f"Cannot read {path}: {error}") from error
+    if not isinstance(entries, list):
+        raise SystemExit(f"Cannot read {path}: aliases must be an array")
+    result = []
+    for entry in entries:
+        if isinstance(entry, dict) and isinstance(entry.get("desktop_id"), str) and isinstance(entry.get("phrase"), str):
+            phrase = normalize(entry["phrase"])
+            desktop_id = entry["desktop_id"].strip()
+            if desktop_id and phrase:
+                result.append({"desktop_id": desktop_id, "phrase": phrase})
+    return result
+
+
+def write(path: Path, entries: list[dict[str, str]]) -> None:
+    path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    content = "# Local spoken aliases for currently installed desktop applications.\n"
+    for entry in sorted(entries, key=lambda item: (item["desktop_id"], item["phrase"])):
+        content += "\n[[aliases]]\n"
+        content += f'desktop_id = {json.dumps(entry["desktop_id"])}\n'
+        content += f'phrase = {json.dumps(entry["phrase"])}\n'
+    with tempfile.NamedTemporaryFile("w", encoding="utf-8", dir=path.parent, delete=False) as stream:
+        stream.write(content)
+        temp_path = Path(stream.name)
+    temp_path.chmod(0o600)
+    temp_path.replace(path)
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="Manage ArCHi spoken aliases for installed apps.")
+    parser.add_argument("--path", type=Path, default=aliases_path(), help="alias registry path")
+    subparsers = parser.add_subparsers(dest="action", required=True)
+    subparsers.add_parser("list", help="list configured aliases")
+    for action in ("add", "remove"):
+        command = subparsers.add_parser(action, help=f"{action} a spoken alias")
+        command.add_argument("desktop_id", help="desktop entry ID, for example omawrite.desktop")
+        command.add_argument("phrase", help='spoken app name only, for example "oma right"')
+    args = parser.parse_args()
+    entries = load(args.path)
+    if args.action == "list":
+        for entry in entries:
+            print(f'{entry["phrase"]}\t{entry["desktop_id"]}')
+        return 0
+
+    phrase = normalize(args.phrase)
+    desktop_id = args.desktop_id.strip()
+    if not phrase or not desktop_id:
+        parser.error("desktop_id and phrase must contain text")
+    entry = {"desktop_id": desktop_id, "phrase": phrase}
+    if args.action == "add":
+        if entry not in entries:
+            entries.append(entry)
+            write(args.path, entries)
+        print(f'Added spoken alias: {phrase} -> {desktop_id}')
+        return 0
+
+    updated = [item for item in entries if item != entry]
+    if len(updated) == len(entries):
+        raise SystemExit("Alias not found.")
+    write(args.path, updated)
+    print(f'Removed spoken alias: {phrase} -> {desktop_id}')
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

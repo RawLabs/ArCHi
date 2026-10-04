@@ -19,17 +19,45 @@ reply = "Opening downloads."
 
 [[commands]]
 id = "volume_up"
-phrases = ["volume up", "turn volume up", "make it louder", "louder"]
+phrases = ["volume up", "turn volume up", "turn the volume up", "raise the volume", "make it louder", "louder"]
 action = "capability"
 capability = "audio.volume.raise"
 reply = "Volume up."
 
 [[commands]]
 id = "volume_down"
-phrases = ["volume down", "turn volume down", "make it quieter", "quieter"]
+phrases = ["volume down", "turn volume down", "turn the volume down", "lower the volume", "make it quieter", "quieter"]
 action = "capability"
 capability = "audio.volume.lower"
 reply = "Volume down."
+
+[[commands]]
+id = "zoom_in"
+phrases = ["zoom", "zoom in", "zoom in more", "magnify", "magnify the screen", "make the screen bigger", "make everything bigger"]
+action = "capability"
+capability = "visual.zoom.in"
+reply = "Zoomed in."
+
+[[commands]]
+id = "zoom_less"
+phrases = ["zoom less", "zoom back a little", "reduce zoom", "magnify less"]
+action = "capability"
+capability = "visual.zoom.out"
+reply = "Zoomed out a step."
+
+[[commands]]
+id = "zoom_out"
+phrases = ["zoom out", "reset zoom", "turn off zoom", "stop zooming", "normal size", "back to normal size"]
+action = "capability"
+capability = "visual.zoom.reset"
+reply = "Zoom reset."
+
+[[commands]]
+id = "zoom_restore"
+phrases = []
+action = "capability"
+capability = "visual.zoom.restore"
+reply = "Zoom cancelled."
 
 [[commands]]
 id = "mute"
@@ -98,7 +126,7 @@ reply = "Closing downloads."
 id = "close_clarify"
 phrases = ["close", "quit", "exit", "dismiss"]
 action = "clarify"
-prompt = "What should I close: an installed app, home, downloads, or this window?"
+prompt = "What should I close: home, downloads, or this window? For an app, say close followed by its name."
 targets = { home = "close_home", downloads = "close_downloads", window = "close_active_window" }
 
 [[commands]]
@@ -151,10 +179,10 @@ reply = "I'm ArCHi."
 id = "help"
 phrases = ["help", "what can you do"]
 action = "reply"
-reply = "I can open and close installed apps and folders, control volume and mute state, take screenshots, manage windows, read the clipboard, lock the computer, switch workspaces, and control logging."
+reply = "I can open and close installed apps and folders, control zoom, volume and mute state, take screenshots, manage windows, read the clipboard, lock the computer, switch workspaces, and control logging."
 
 [[commands]]
 id = "list_commands"
 phrases = ["list commands", "show commands", "what commands do you know", "command list"]
 action = "reply"
-reply = "Say open or close followed by an installed app name. System commands include home, downloads, volume, mute, screenshots, locking, windows, clipboard reading, workspaces, and logging."
+reply = "Say open or close followed by an installed app name. System commands include home, downloads, zoom, volume, mute, screenshots, locking, windows, clipboard reading, workspaces, and logging."

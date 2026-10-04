@@ -1,0 +1,94 @@
+#!/usr/bin/env bash
+# Read-only readiness check for the packaged ArCHi beta.
+set -u
+
+archi_home="${ARCHI_HOME:-$HOME/.local/share/archi}"
+tts_url="${POCKET_TTS_URL:-http://127.0.0.1:8000/tts}"
+tts_say="${ARCHI_TTS_SAY:-}"
+missing=0
+
+check_command() {
+  if command -v "$1" >/dev/null 2>&1; then
+    printf 'ok   %s\n' "$1"
+  else
+    printf 'miss %s — %s\n' "$1" "$2"
+    missing=1
+  fi
+}
+
+printf 'ArCHi beta readiness check\n'
+if [[ -r "$archi_home/router.py" && -r "$archi_home/commands.toml" ]]; then
+  printf 'ok   user runtime: %s\n' "$archi_home"
+else
+  printf 'miss user runtime — run archi-setup as this desktop user\n'
+  missing=1
+fi
+
+check_command python3 'install Python'
+check_command voxtype 'install/configure Voxtype'
+check_command hyprctl 'log into a Hyprland session'
+check_command omarchy-osd 'install/use the supported Omarchy environment'
+check_command pw-play 'install PipeWire tools'
+check_command pw-record 'install PipeWire tools'
+check_command pw-dump 'install PipeWire tools'
+check_command wpctl 'install WirePlumber tools'
+check_command wl-paste 'install wl-clipboard'
+check_command jq 'install jq'
+check_command curl 'install curl'
+check_command gtk-launch 'install gtk3'
+check_command xdg-open 'install xdg-utils'
+check_command pactl 'install libpulse'
+check_command flock 'install util-linux'
+check_command iconv 'install glibc'
+
+profile_script="$(command -v archi-system-profile 2>/dev/null || true)"
+if [[ -z "$profile_script" ]]; then
+  profile_script="$(dirname "$0")/archi-system-profile"
+fi
+profile_output="$(bash "$profile_script" 2>/dev/null || true)"
+profile="$(printf '%s\n' "$profile_output" | tail -n 1)"
+printf '%s\n' "$profile_output" | head -n 1
+case "$profile" in
+  below-tested-voice-minimum)
+    printf 'warn system profile is below the tested voice minimum (4 logical CPUs, 8 GiB RAM, AVX2). Use espeak-ng where possible; voice capture may be slow.\n'
+    ;;
+  minimum-voice-system)
+    printf 'warn system profile is the tested voice minimum. Prefer Piper; Pocket TTS can use about 1.1 GiB resident memory.\n'
+    ;;
+  recommended-voice-system)
+    printf 'ok   system profile meets the recommended voice target (8 logical CPUs, 16 GiB RAM, 8 GiB free disk).\n'
+    ;;
+  *)
+    printf 'warn system profile could not be determined.\n'
+    ;;
+esac
+
+if command -v systemctl >/dev/null 2>&1 && systemctl --user is-active --quiet voxtype.service; then
+  printf 'ok   voxtype.service is active\n'
+else
+  printf 'warn voxtype.service is not active or cannot be checked\n'
+fi
+
+if [[ -n "$tts_say" ]]; then
+  if command -v "$tts_say" >/dev/null 2>&1; then
+    printf 'ok   TTS backend: helper %s\n' "$tts_say"
+  else
+    printf 'warn TTS helper is not executable: %s\n' "$tts_say"
+  fi
+else
+  http_status="$(curl --silent --show-error --max-time 2 --output /dev/null --write-out '%{http_code}' "$tts_url" 2>/dev/null || true)"
+  case "$http_status" in
+    2??|405)
+      printf 'ok   TTS backend: Pocket TTS endpoint responded (HTTP %s): %s (speech generation not tested)\n' "$http_status" "$tts_url"
+      ;;
+    *)
+      printf 'warn TTS backend: Pocket TTS endpoint unavailable (HTTP %s): %s\n' "${http_status:-unknown}" "$tts_url"
+      ;;
+  esac
+fi
+
+if (( missing )); then
+  printf 'Result: setup incomplete. Resolve the missing items before testing.\n'
+  exit 1
+fi
+printf 'Result: required local commands are available. Review warnings before voice testing.\n'

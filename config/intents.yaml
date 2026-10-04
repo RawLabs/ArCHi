@@ -38,6 +38,36 @@ intents:
         slots:
           command_id: mute
 
+  ZoomIn:
+    data:
+      - sentences:
+          - "zoom [in] [more]"
+          - "magnify [the screen]"
+          - "make (the screen|everything) bigger"
+        slots:
+          command_id: zoom_in
+
+  ZoomLess:
+    data:
+      - sentences:
+          - "zoom less"
+          - "zoom back a little"
+          - "reduce zoom"
+          - "magnify less"
+        slots:
+          command_id: zoom_less
+
+  ZoomOut:
+    data:
+      - sentences:
+          - "zoom out"
+          - "reset zoom"
+          - "turn off zoom"
+          - "stop zooming"
+          - "[back to] normal size"
+        slots:
+          command_id: zoom_out
+
   UnmuteAudio:
     data:
       - sentences:

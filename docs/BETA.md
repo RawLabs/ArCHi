@@ -11,7 +11,9 @@ use on an untested desktop adapter.
 - live XDG application discovery for `open`, `launch`, `start`, `close`,
   `quit`, and `exit` commands;
 - Omarchy/Hyprland actions through `omarchy.hyprland`;
-- local Pocket TTS-compatible speech output;
+- native Omarchy zoom by voice, with short-lived `more`/`less` context and
+  `cancel` restoration; see [voice controls](VOICE_CONTROLS.md);
+- local speech output through Pocket TTS or an `ARCHI_TTS_SAY` helper;
 - transparent, non-focus-stealing Omarchy OSD feedback;
 - local diagnostic logging and optional HassIL shadow comparison.
 
@@ -19,6 +21,10 @@ The beta does not provide a wake word, always-on microphone, voice-triggered
 dictation mode, AT-SPI control, a general provider broker, a plugin loader, or
 support for GNOME, COSMIC, KDE, X11, or Pop!_OS. Normal Voxtype dictation may
 remain configured on its separate hotkey, but it is not controlled by ArCHi.
+
+The next bounded extension is documented in [Beta+ delivery path](BETA_PLUS.md).
+Background close confirmation is implemented in the current working tree;
+it does not interpret an application's save/discard/cancel dialog.
 
 ## Normal operation
 
@@ -36,6 +42,15 @@ remain configured on its separate hotkey, but it is not controlled by ArCHi.
 visual overlays. Routine command speech remains controlled by the command
 registry and Pocket TTS configuration.
 
+## Low-resource systems
+
+The tested minimum local-voice machine is a 4-logical-CPU, AVX2 system with an
+8 GB RAM class (about 7.5 GiB reported) and SSD storage. It is usable for beta testing, but transcription can
+take several seconds after recording ends. `archi-doctor` identifies this class
+and advises Piper through `ARCHI_TTS_SAY`; Pocket TTS remains a quality option
+for systems with more memory headroom. A target with 8 logical CPUs and 16 GiB
+RAM is recommended for a smoother voice experience.
+
 ## App matching policy
 
 Operational commands are exact allowlisted phrases. Installed apps refresh from
@@ -47,7 +62,7 @@ than one installed app is rejected rather than guessed.
 ## Updating the beta
 
 Run `./install.sh` from the checked-out source tree. It updates scripts,
-router modules, adapters, default registry, diagnostic grammar, and docs in the
+router modules, adapters, default registry, and diagnostic grammar in the
 installed ArCHi directory. It preserves the active `commands.toml`.
 
 Use `./install.sh --refresh-registry` only when intentionally replacing the

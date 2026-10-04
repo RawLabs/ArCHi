@@ -67,6 +67,87 @@ def test_installer_preserves_registry_and_can_refresh_it(tmp_path):
     assert backups[0].read_text() == "# local customization\n"
 
 
+def test_system_profile_classifies_tested_minimum_and_low_end(tmp_path):
+    script = PROJECT_ROOT / "scripts" / "archi-system-profile"
+    minimum = subprocess.run(
+        ["bash", script],
+        env={
+            **os.environ,
+            "ARCHI_TOTAL_MEMORY_KIB": str(8 * 1024 * 1024),
+            "ARCHI_LOGICAL_CPUS": "4",
+            "ARCHI_CPU_FLAGS": "sse4 avx2",
+            "ARCHI_AVAILABLE_DISK_KIB": str(4 * 1024 * 1024),
+        },
+        text=True,
+        capture_output=True,
+        check=True,
+    )
+    assert minimum.stdout.splitlines()[-1] == "minimum-voice-system"
+
+    low_end = subprocess.run(
+        ["bash", script],
+        env={
+            **os.environ,
+            "ARCHI_TOTAL_MEMORY_KIB": str(4 * 1024 * 1024),
+            "ARCHI_LOGICAL_CPUS": "2",
+            "ARCHI_CPU_FLAGS": "sse4",
+            "ARCHI_AVAILABLE_DISK_KIB": str(20 * 1024 * 1024),
+        },
+        text=True,
+        capture_output=True,
+        check=True,
+    )
+    assert low_end.stdout.splitlines()[-1] == "below-tested-voice-minimum"
+
+    eight_gb_class = subprocess.run(
+        ["bash", script],
+        env={
+            **os.environ,
+            "ARCHI_TOTAL_MEMORY_KIB": str(7680 * 1024),
+            "ARCHI_LOGICAL_CPUS": "4",
+            "ARCHI_CPU_FLAGS": "sse4 avx2",
+            "ARCHI_AVAILABLE_DISK_KIB": str(4 * 1024 * 1024),
+        },
+        text=True,
+        capture_output=True,
+        check=True,
+    )
+    assert eight_gb_class.stdout.splitlines()[-1] == "minimum-voice-system"
+
+
+def test_doctor_reports_custom_tts_helper_and_hardware_guidance(tmp_path):
+    fake_bin = tmp_path / "fake-bin"
+    fake_bin.mkdir()
+    for command in ("python3", "voxtype", "hyprctl", "omarchy-osd", "pw-play", "pw-record", "pw-dump", "wpctl", "wl-paste", "jq", "curl", "gtk-launch", "xdg-open", "pactl", "flock", "iconv"):
+        write_executable(fake_bin / command, "#!/usr/bin/env bash\nexit 0\n")
+    write_executable(fake_bin / "systemctl", "#!/usr/bin/env bash\nexit 0\n")
+    helper = fake_bin / "archi-piper-say"
+    write_executable(helper, "#!/usr/bin/env bash\nexit 0\n")
+    archi_home = tmp_path / "archi"
+    archi_home.mkdir()
+    (archi_home / "router.py").touch()
+    (archi_home / "commands.toml").touch()
+    env = {
+        **os.environ,
+        "PATH": f"{fake_bin}:{os.environ['PATH']}",
+        "ARCHI_HOME": str(archi_home),
+        "ARCHI_TTS_SAY": str(helper),
+        "ARCHI_TOTAL_MEMORY_KIB": str(8 * 1024 * 1024),
+        "ARCHI_LOGICAL_CPUS": "4",
+        "ARCHI_CPU_FLAGS": "sse4 avx2",
+        "ARCHI_AVAILABLE_DISK_KIB": str(4 * 1024 * 1024),
+    }
+    result = subprocess.run(
+        ["bash", PROJECT_ROOT / "scripts" / "archi-doctor"],
+        env=env,
+        text=True,
+        capture_output=True,
+        check=True,
+    )
+    assert "tested voice minimum" in result.stdout
+    assert f"TTS backend: helper {helper}" in result.stdout
+
+
 def test_shadow_report_summarizes_coverage_and_review_queue(tmp_path):
     log_path = tmp_path / "commands.jsonl"
     registry_path = tmp_path / "commands.toml"
@@ -381,7 +462,7 @@ def test_clipboard_reader_requests_text_and_snapshots_it(tmp_path):
     )
     write_executable(
         fake_bin / "pocket-tts-say",
-        "#!/usr/bin/env bash\ncat > \"$ARCHI_TEST_SPOKEN\"\n",
+        "#!/usr/bin/env bash\nprintf '%s' \"$1\" > \"$ARCHI_TEST_SPOKEN\"\n",
     )
     env = {
         **os.environ,
@@ -400,6 +481,52 @@ def test_clipboard_reader_requests_text_and_snapshots_it(tmp_path):
     assert spoken.read_text() == "clipboard sample"
     args = paste_args.read_text().splitlines()
     assert args[args.index("--type") + 1] == "text"
+
+
+def test_clipboard_reader_uses_configured_speech_helper(tmp_path):
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    spoken = tmp_path / "spoken"
+    write_executable(fake_bin / "wl-paste", "#!/usr/bin/env bash\nprintf 'Custom speech test'\n")
+    helper = fake_bin / "custom-say"
+    write_executable(helper, '#!/usr/bin/env bash\nprintf "%s" "$1" > "$ARCHI_TEST_SPOKEN"\n')
+    subprocess.run(
+        [PROJECT_ROOT / "scripts/pocket-tts-read-clipboard"],
+        env={**os.environ, "PATH": f"{fake_bin}:{os.environ['PATH']}", "ARCHI_TTS_SAY": str(helper), "ARCHI_TEST_SPOKEN": str(spoken)},
+        check=True,
+    )
+    assert spoken.read_text() == "Custom speech test"
+
+
+def test_cancel_during_transcription_prevents_routing(tmp_path):
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    runtime = tmp_path / "runtime/archi"
+    runtime.mkdir(parents=True)
+    (runtime / "control-session-id").write_text("cancel-test")
+    write_executable(fake_bin / "voxtype", '#!/usr/bin/env bash\nrm -f "$XDG_RUNTIME_DIR/archi/control-session-id"\nprintf "close window" > "$XDG_RUNTIME_DIR/archi/control-transcript.txt"\n')
+    archi_home = tmp_path / "share"
+    archi_home.mkdir()
+    (archi_home / "router.py").write_text('raise RuntimeError("Cancelled command was routed")\n')
+    subprocess.run(
+        [PROJECT_ROOT / "scripts/archi-control-stop"],
+        env={**os.environ, "PATH": f"{fake_bin}:{os.environ['PATH']}", "ARCHI_HOME": str(archi_home), "XDG_RUNTIME_DIR": str(runtime.parent)},
+        check=True, timeout=3,
+    )
+
+
+def test_spoken_alias_preserves_unicode_and_apostrophes(tmp_path):
+    alias_path = tmp_path / "aliases.toml"
+    subprocess.run(
+        [sys.executable, PROJECT_ROOT / "scripts/archi-app-alias", "--path", alias_path, "add", "editor.desktop", "René's editor"],
+        check=True,
+    )
+    from archi.applications import load_app_aliases
+    assert load_app_aliases(alias_path) == {"editor.desktop": {"rené's editor"}}
+
+
+def test_public_site_catalog_matches_operational_registry():
+    subprocess.run([sys.executable, PROJECT_ROOT / "tools/build-site-catalog.py", "--check"], check=True)
 
 
 def test_clipboard_reader_rejects_non_utf8_data(tmp_path):

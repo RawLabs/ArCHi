@@ -5,6 +5,7 @@ from __future__ import annotations
 import configparser
 import os
 import shlex
+import tomllib
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -22,6 +23,7 @@ class DesktopApplication:
     aliases: tuple[str, ...]
     startup_wm_class: str = ""
     executable: str | None = None
+    terminal: bool = False
 
     def action_payload(self) -> dict:
         return {
@@ -31,6 +33,7 @@ class DesktopApplication:
             "startup_wm_class": self.startup_wm_class,
             "executable": self.executable,
             "app_aliases": list(self.aliases),
+            "terminal": self.terminal,
         }
 
 
@@ -58,6 +61,41 @@ def application_dirs() -> list[Path]:
             seen.add(key)
             result.append(path)
     return result
+
+
+def app_aliases_path() -> Path:
+    """Return the user-owned, persistent spoken-app alias registry path."""
+    config_home = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config"))
+    return Path(os.environ.get("ARCHI_APP_ALIASES_PATH", config_home / "archi" / "app-aliases.toml"))
+
+
+def load_app_aliases(path: Path | None = None) -> dict[str, set[str]]:
+    """Load local spoken aliases without giving them command authority.
+
+    An alias only supplements an app that is currently discovered from an XDG
+    desktop entry.  Conflicting aliases are later removed from routing, just as
+    conflicting desktop-entry names are.
+    """
+    path = path or app_aliases_path()
+    try:
+        with path.open("rb") as stream:
+            entries = tomllib.load(stream).get("aliases", [])
+    except (OSError, tomllib.TOMLDecodeError):
+        return {}
+
+    aliases: dict[str, set[str]] = {}
+    for entry in entries if isinstance(entries, list) else []:
+        if not isinstance(entry, dict):
+            continue
+        desktop_id = entry.get("desktop_id")
+        phrase = entry.get("phrase")
+        if not isinstance(desktop_id, str) or not isinstance(phrase, str):
+            continue
+        desktop_id = desktop_id.strip()
+        phrase = normalize(phrase)
+        if desktop_id and phrase:
+            aliases.setdefault(desktop_id, set()).add(phrase)
+    return aliases
 
 
 def desktop_bool(section: configparser.SectionProxy, key: str) -> bool:
@@ -125,5 +163,6 @@ def scan_desktop_apps() -> list[DesktopApplication]:
                 aliases=tuple(aliases),
                 startup_wm_class=section.get("StartupWMClass", "").strip(),
                 executable=executable_name(exec_line),
+                terminal=desktop_bool(section, "Terminal"),
             ))
     return apps

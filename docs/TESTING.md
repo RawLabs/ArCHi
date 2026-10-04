@@ -38,8 +38,11 @@ matching.
 | `close_app:<desktop-id>` | close, quit, or exit + an unambiguous installed app name | Closes the most recently focused matching app window |
 | `open_home` | open home; open home folder; open my home folder | Opens a folder |
 | `open_downloads` | open downloads; open downloads folder | Opens a folder |
-| `volume_up` | volume up; turn volume up; make it louder; louder | Changes system audio |
-| `volume_down` | volume down; turn volume down; make it quieter; quieter | Changes system audio |
+| `volume_up` | volume up; turn volume up; turn the volume up; raise the volume; make it louder; louder | Changes system audio |
+| `volume_down` | volume down; turn volume down; turn the volume down; lower the volume; make it quieter; quieter | Changes system audio |
+| `zoom_in` | zoom; zoom in; zoom in more; magnify; magnify the screen; make the screen bigger; make everything bigger | Increases native screen zoom |
+| `zoom_less` | zoom less; zoom back a little; reduce zoom; magnify less | Decreases zoom by one step |
+| `zoom_out` | zoom out; reset zoom; turn off zoom; stop zooming; normal size; back to normal size | Resets zoom to normal |
 | `mute` | mute; mute audio; mute volume; mute sound; turn volume off; turn sound off | Mutes system audio |
 | `unmute` | unmute; unmute audio; unmute volume; unmute sound; turn volume on; turn sound on | Unmutes system audio |
 | `toggle_mute` | toggle mute; toggle audio mute; toggle volume mute | Toggles system mute |
@@ -49,7 +52,7 @@ matching.
 | `close_home` | close home; close home folder; quit home; exit home | Closes a Home folder window |
 | `close_downloads` | close downloads; close downloads folder; quit downloads; exit downloads | Closes a Downloads folder window |
 | `close_clarify` | close; quit; exit; dismiss | Asks which safe target to close |
-| `read_clipboard` | read clipboard; read clipboard aloud; read this aloud; speak clipboard; read that aloud | Speaks clipboard contents |
+| `read_clipboard` | read clipboard; read clipboard aloud; read this aloud; speak clipboard; read that aloud | Speaks clipboard contents through the configured TTS helper |
 | `stop_speaking` | stop speaking; stop talking; shut up; silence; cancel speech | Stops ArCHi speech |
 | `off_record` | off record; off the record; private mode | Stops diagnostic logging |
 | `logging_on` | logging on; back on record; back on the record; resume logging | Resumes diagnostic logging |
@@ -58,6 +61,11 @@ matching.
 | `identity` | what are you; who are you; identify yourself | Spoken reply only |
 | `help` | help; what can you do | Spoken reply only |
 | `list_commands` | list commands; show commands; what commands do you know; command list | Spoken reply only |
+
+After zoom or volume adjustments, `more`, `a little more`, `increase it`,
+`less`, `a little less`, and `decrease it` adjust the same control for up to
+120 seconds. `cancel` restores the original zoom if it has not changed
+elsewhere; for volume it only clears the follow-up context.
 
 For the close clarification, answer with `home`, `downloads`, or `window`.
 Installed apps should be named in the original command, such as `close cliamp`.
@@ -74,7 +82,7 @@ between two applications with the same display or generic name.
 ## Current prototype evidence matrix
 
 This matrix validates the Phase 0 voice-command slice; it is separate from the
-[control-plane roadmap](ROADMAP.md). The target is 80–100 deliberate captures
+[control-plane roadmap](ROADMAP.md). The target is about 100 deliberate captures
 across four short sessions: two on AC power and two on battery. This lets the
 log distinguish speech/parser behavior from power-state slowdown.
 
@@ -82,8 +90,8 @@ log distinguish speech/parser behavior from power-state slowdown.
    “ArCHi stop,” the 120-second limit, and `Escape` cancellation for ArCHi;
    exercise submit and cancel for dictation. Confirm no stuck submap after
    every exit path.
-2. **Accepted baseline (56 tests):** test one representative phrase for each
-   of the 28 log-observable commands twice, once on AC and once on battery. The
+2. **Accepted baseline:** test one representative phrase for each
+   active log-observable command twice, once on AC and once on battery. The
    two logging-mode commands intentionally do not record their own use.
 3. **Natural variations (24 tests):** say each probe below once on AC and once
    on battery. Production may reject it while the independent shadow grammar

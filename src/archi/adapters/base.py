@@ -6,7 +6,10 @@ from dataclasses import dataclass
 from typing import Literal, Protocol
 
 
-ActionStatus = Literal["success", "unsupported", "unavailable", "failed"]
+# ``attention`` means that the requested action was delivered, but the desktop
+# still shows the target afterwards.  It is intentionally not a failure: for
+# example, an application may be waiting on its own unsaved-changes dialog.
+ActionStatus = Literal["success", "attention", "unsupported", "unavailable", "failed"]
 
 
 @dataclass(frozen=True)

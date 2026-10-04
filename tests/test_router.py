@@ -23,6 +23,7 @@ Terminal=true
 """
     )
     monkeypatch.setenv("ARCHI_APPLICATION_DIRS", str(applications))
+    monkeypatch.setenv("ARCHI_APP_ALIASES_PATH", str(tmp_path / "app-aliases.toml"))
     return applications
 
 
@@ -33,6 +34,7 @@ def isolated_router(monkeypatch, tmp_path):
     monkeypatch.setattr(router, "RUNTIME_DIR", runtime_dir)
     monkeypatch.setattr(router, "OFF_RECORD_PATH", runtime_dir / "off-record")
     monkeypatch.setattr(router, "PENDING_PATH", runtime_dir / "pending.json")
+    monkeypatch.setattr(router, "ADJUSTMENT_PATH", runtime_dir / "adjustment.json")
     monkeypatch.setattr(router, "LOG_PATH", log_path)
     monkeypatch.setattr(router, "speak", lambda _text, _dry_run: None)
     monkeypatch.setattr(router, "desktop_context", lambda: {"capture_status": "test"})
@@ -116,6 +118,33 @@ def test_desktop_registry_refreshes_on_each_load(isolated_app_registry):
     by_phrase, _ = router.load_commands()
     assert by_phrase["open fresh app"]["payload"]["launcher_id"] == "fresh"
     assert by_phrase["close fresh app"]["capability"] == "app.close"
+
+
+def test_user_spoken_alias_routes_only_to_its_currently_installed_app(monkeypatch, isolated_app_registry, tmp_path):
+    alias_path = tmp_path / "app-aliases.toml"
+    alias_path.write_text(
+        '[[aliases]]\ndesktop_id = "cliamp.desktop"\nphrase = "cli amp right"\n'
+    )
+    monkeypatch.setenv("ARCHI_APP_ALIASES_PATH", str(alias_path))
+
+    by_phrase, _ = router.load_commands()
+
+    assert by_phrase["close cli amp right"]["id"] == "close_app:cliamp.desktop"
+
+
+def test_user_spoken_alias_does_not_route_when_its_app_is_not_installed(monkeypatch, tmp_path):
+    applications = tmp_path / "applications"
+    applications.mkdir(exist_ok=True)
+    monkeypatch.setenv("ARCHI_APPLICATION_DIRS", str(applications))
+    alias_path = tmp_path / "app-aliases.toml"
+    alias_path.write_text(
+        '[[aliases]]\ndesktop_id = "missing.desktop"\nphrase = "missing app"\n'
+    )
+    monkeypatch.setenv("ARCHI_APP_ALIASES_PATH", str(alias_path))
+
+    by_phrase, _ = router.load_commands()
+
+    assert "close missing app" not in by_phrase
 
 
 def test_hidden_user_entry_suppresses_same_system_app(monkeypatch, tmp_path):
@@ -258,6 +287,84 @@ def test_route_reports_heard_and_success_feedback(isolated_router, monkeypatch):
     ]
 
 
+def test_zoom_followups_and_cancel_restore_original_factor(isolated_router, monkeypatch):
+    actions = []
+    monkeypatch.setattr(router, "current_zoom_factor", lambda: 1.5)
+    monkeypatch.setattr(
+        router, "execute",
+        lambda command, _dry_run: (
+            actions.append((command["id"], command.get("payload")))
+            or ActionResult("success", "test", command.get("capability", "test"))
+        ),
+    )
+
+    assert router.route("ArCHi, zoom")["command_id"] == "zoom_in"
+    assert router.route("more")["command_id"] == "zoom_in"
+    assert router.route("a little less")["command_id"] == "zoom_less"
+    cancelled = router.route("cancel")
+    assert cancelled["command_id"] == "zoom_restore"
+    assert cancelled["status"] == "cancelled"
+    assert actions[-1] == ("zoom_restore", {"factor": 1.5})
+    assert not router.ADJUSTMENT_PATH.exists()
+    assert router.route("more")["status"] == "unknown"
+    assert len(actions) == 4
+
+
+def test_zoom_out_resets_and_clears_followup_context(isolated_router, monkeypatch):
+    actions = []
+    monkeypatch.setattr(router, "current_zoom_factor", lambda: 1.0)
+    monkeypatch.setattr(
+        router, "execute",
+        lambda command, _dry_run: (
+            actions.append(command["id"])
+            or ActionResult("success", "test", command.get("capability", "test"))
+        ),
+    )
+    router.route("make the screen bigger")
+    assert router.route("zoom out")["command_id"] == "zoom_out"
+    assert router.route("less")["status"] == "unknown"
+    assert actions == ["zoom_in", "zoom_out"]
+
+
+def test_cancel_preserves_zoom_changed_outside_archi(isolated_router, monkeypatch):
+    factor = 1.0
+    actions = []
+    monkeypatch.setattr(router, "current_zoom_factor", lambda: factor)
+
+    def fake_execute(command, _dry_run):
+        nonlocal factor
+        actions.append(command["id"])
+        if command["id"] == "zoom_in":
+            factor += 1.0
+        return ActionResult("success", "test", command.get("capability", "test"))
+
+    monkeypatch.setattr(router, "execute", fake_execute)
+    router.route("zoom")
+    factor = 3.0  # A keyboard binding or another controller changed zoom.
+    result = router.route("cancel")
+    assert result["status"] == "cancelled"
+    assert "left it" in result["reply"]
+    assert factor == 3.0
+    assert actions == ["zoom_in"]
+
+
+def test_volume_followups_do_not_change_zoom(isolated_router, monkeypatch):
+    actions = []
+    monkeypatch.setattr(
+        router, "execute",
+        lambda command, _dry_run: (
+            actions.append(command["id"])
+            or ActionResult("success", "test", command.get("capability", "test"))
+        ),
+    )
+    router.route("raise the volume")
+    assert router.route("more")["command_id"] == "volume_up"
+    assert router.route("less")["command_id"] == "volume_down"
+    assert router.route("cancel")["status"] == "cancelled"
+    assert router.route("more")["status"] == "unknown"
+    assert actions == ["volume_up", "volume_up", "volume_down"]
+
+
 def test_feedback_phrase_limits_long_transcripts():
     phrase = "a" * 81
     assert router.feedback_phrase(phrase) == f"{'a' * 77}..."
@@ -378,18 +485,55 @@ def test_unknown_action_never_executes():
     assert router.execute({"action": "not_allowed", "argv": ["true"]}, dry_run=False).status == "unsupported"
 
 
-def test_omarchy_adapter_closes_matching_window_address(monkeypatch, tmp_path):
+def test_omarchy_zoom_uses_native_cursor_setting_and_validates_restore(monkeypatch, tmp_path):
     calls = []
+    factor = 1.5
 
     def fake_run(argv, **_kwargs):
+        nonlocal factor
+        calls.append(argv)
+        if argv == ["hyprctl", "-j", "getoption", "cursor.zoom_factor"]:
+            return type("Result", (), {"returncode": 0, "stdout": json.dumps({"float": factor}), "stderr": ""})()
+        if argv[:2] == ["hyprctl", "eval"]:
+            factor = float(argv[2].split("zoom_factor = ", 1)[1].split(" ", 1)[0])
+            return type("Result", (), {"returncode": 0, "stdout": "ok", "stderr": ""})()
+        raise AssertionError(argv)
+
+    monkeypatch.setattr("archi.adapters.omarchy.subprocess.run", fake_run)
+    adapter = OmarchyDesktopAdapter(tmp_path)
+    assert adapter.execute("visual.zoom.in", {}).succeeded
+    assert factor == 2.5
+    assert adapter.execute("visual.zoom.out", {}).succeeded
+    assert factor == 1.5
+    assert adapter.execute("visual.zoom.restore", {"factor": 1.25}).succeeded
+    assert factor == 1.25
+    assert adapter.execute("visual.zoom.restore", {"factor": 99}).status == "failed"
+    assert adapter.execute("visual.zoom.reset", {}).succeeded
+    assert factor == 1.0
+    assert ["hyprctl", "eval", "hl.config({ cursor = { zoom_factor = 1 } })"] in calls
+    calls_before = len(calls)
+    assert adapter.execute("visual.zoom.out", {}).detail == "zoom already at requested level"
+    assert len(calls) == calls_before + 1  # Read-only state check; no config write.
+
+
+def test_omarchy_adapter_closes_matching_window_address(monkeypatch, tmp_path):
+    calls = []
+    client_reads = 0
+
+    def fake_run(argv, **_kwargs):
+        nonlocal client_reads
         calls.append(argv)
         if argv == ["hyprctl", "-j", "clients"]:
+            client_reads += 1
+            clients = [
+                {"address": "0x1", "class": "foot", "initialClass": "foot", "title": "shell", "focusHistoryID": 0},
+                {"address": "0x2", "class": "foot", "initialClass": "foot", "title": "cliamp", "focusHistoryID": 1},
+            ] if client_reads == 1 else [
+                {"address": "0x1", "class": "foot", "initialClass": "foot", "title": "shell", "focusHistoryID": 0},
+            ]
             return type("Result", (), {
                 "returncode": 0,
-                "stdout": json.dumps([
-                    {"address": "0x1", "class": "foot", "initialClass": "foot", "title": "shell", "focusHistoryID": 0},
-                    {"address": "0x2", "class": "foot", "initialClass": "foot", "title": "cliamp", "focusHistoryID": 1},
-                ]),
+                "stdout": json.dumps(clients),
             })()
         return type("Result", (), {"returncode": 0})()
 
@@ -399,11 +543,56 @@ def test_omarchy_adapter_closes_matching_window_address(monkeypatch, tmp_path):
     adapter = OmarchyDesktopAdapter(tmp_path)
     result = adapter.execute(command["capability"], command["payload"])
     assert result.status == "success"
-    assert calls[-1] == [
+    assert [
         "hyprctl",
         "dispatch",
         'hl.dsp.window.close({ window = "address:0x2" })',
-    ]
+    ] in calls
+    assert ["hyprctl", "-j", "activeworkspace"] not in calls
+
+
+def test_omarchy_adapter_flags_background_window_that_needs_attention(monkeypatch, tmp_path):
+    calls = []
+
+    def fake_run(argv, **_kwargs):
+        calls.append(argv)
+        if argv == ["hyprctl", "-j", "clients"]:
+            return type("Result", (), {
+                "returncode": 0,
+                "stdout": json.dumps([
+                    {"address": "0x2", "class": "foot", "initialClass": "foot", "title": "cliamp", "focusHistoryID": 1},
+                ]),
+            })()
+        return type("Result", (), {"returncode": 0, "stdout": "", "stderr": ""})()
+
+    monkeypatch.setattr("archi.adapters.omarchy.subprocess.run", fake_run)
+    monkeypatch.setattr(OmarchyDesktopAdapter, "_CLOSE_CONFIRM_DELAY_SECONDS", 0)
+    command = router.dynamic_app_commands()[1]
+    adapter = OmarchyDesktopAdapter(tmp_path)
+    result = adapter.execute(command["capability"], command["payload"])
+
+    assert result.status == "attention"
+    assert "needs attention" in (result.detail or "")
+    assert ["hyprctl", "-j", "activeworkspace"] not in calls
+    assert ["hyprctl", "dispatch", 'hl.dsp.window.close({ window = "address:0x2" })'] in calls
+
+
+def test_route_reports_attention_without_claiming_an_app_closed(isolated_router, monkeypatch):
+    feedback = []
+    monkeypatch.setattr(
+        router,
+        "execute",
+        lambda _command, _dry_run: ActionResult("attention", "test", "app.close", "window remains"),
+    )
+    monkeypatch.setattr(router, "show_feedback", lambda *args: feedback.append(args))
+
+    result = router.route("close cliamp")
+
+    assert result["status"] == "attention"
+    assert result["reply"] == "cliamp needs attention."
+    assert result["execution_status"] == "attention"
+    assert ("attention", "cliamp needs attention.", 3500, False) in feedback
+    assert feedback[-1][0] == "attention"
 
 
 def test_omarchy_feedback_uses_transient_osd_not_system_notifications(monkeypatch, tmp_path):
@@ -450,3 +639,71 @@ def test_unknown_desktop_adapter_is_unavailable(monkeypatch):
     )
     assert result.status == "unavailable"
     assert result.provider_id == "none"
+
+
+@pytest.mark.parametrize("state", [[], None, {"expires": "later"}, {"expires": float("nan")}, {"expires": 1e20, "command_id": "close", "targets": []}])
+def test_invalid_pending_state_is_ignored(isolated_router, state):
+    router.RUNTIME_DIR.mkdir(parents=True)
+    router.PENDING_PATH.write_text(json.dumps(state))
+    assert router.route("who are you", dry_run=True)["status"] == "success"
+
+
+def test_dry_run_keeps_pending_confirmation(isolated_router, monkeypatch):
+    monkeypatch.setattr(router, "execute", lambda *_args: ActionResult("success", "test", "folder.close"))
+    router.route("close")
+    original = router.PENDING_PATH.read_bytes()
+    router.route("cancel", dry_run=True)
+    assert router.PENDING_PATH.read_bytes() == original
+    router.route("home", dry_run=True)
+    assert router.PENDING_PATH.read_bytes() == original
+
+
+def test_new_command_invalidates_old_confirmation(isolated_router, monkeypatch):
+    monkeypatch.setattr(router, "execute", lambda *_args: ActionResult("success", "test", "test"))
+    router.route("close")
+    router.route("volume up")
+    assert not router.PENDING_PATH.exists()
+    assert router.route("home")["status"] == "unknown"
+
+
+def test_old_registry_without_zoom_commands_does_not_crash_followup(isolated_router, monkeypatch):
+    router.save_adjustment("zoom", 1.0, 2.0)
+    monkeypatch.setattr(router, "load_commands", lambda: ({}, {}))
+    assert router.route("more", dry_run=True)["status"] == "unknown"
+    assert router.route("cancel", dry_run=True)["status"] == "unknown"
+
+
+def test_missing_speech_helper_is_reported_without_crash(monkeypatch, tmp_path, capsys):
+    monkeypatch.setattr(router, "SPEAK", str(tmp_path / "missing-helper"))
+    router.speak("Test", False)
+    assert "speech unavailable" in capsys.readouterr().err
+
+
+def test_unwritable_log_does_not_crash_completed_command(isolated_router, monkeypatch, tmp_path, capsys):
+    blocker = tmp_path / "file-not-directory"
+    blocker.write_text("blocked")
+    monkeypatch.setattr(router, "LOG_PATH", blocker / "commands.jsonl")
+    assert router.route("who are you", dry_run=True)["status"] == "success"
+    assert "diagnostic log unavailable" in capsys.readouterr().err
+
+
+def test_gui_app_close_uses_class_not_another_apps_document_title():
+    payload = {"desktop_id": "editor.desktop", "app_name": "Editor", "executable": "editor"}
+    browser = {"class": "browser", "title": "Editor documentation", "focusHistoryID": 0}
+    editor = {"class": "editor", "title": "notes.txt", "focusHistoryID": 1}
+    assert OmarchyDesktopAdapter._best_window_match([browser, editor], payload) == editor
+    assert OmarchyDesktopAdapter._best_window_match([browser], payload) is None
+
+
+def test_terminal_app_title_must_belong_to_a_terminal():
+    payload = {"desktop_id": "cliamp.desktop", "app_name": "cliamp", "terminal": True}
+    browser = {"class": "browser", "title": "cliamp documentation", "focusHistoryID": 0}
+    terminal = {"class": "foot", "title": "cliamp", "focusHistoryID": 1}
+    assert OmarchyDesktopAdapter._best_window_match([browser, terminal], payload) == terminal
+    assert OmarchyDesktopAdapter._best_window_match([browser], payload) is None
+
+
+def test_invalid_adjustment_family_does_not_crash(isolated_router):
+    router.RUNTIME_DIR.mkdir(parents=True)
+    router.ADJUSTMENT_PATH.write_text('{"family": [], "expires": 1e20}')
+    assert router.route("more", dry_run=True)["status"] == "unknown"

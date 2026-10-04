@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import json
+import math
 import os
 import re
 import subprocess
+import time
 from pathlib import Path
 
 try:
@@ -31,6 +33,18 @@ class OmarchyDesktopAdapter:
         "window.close_active",
         "workspace.next",
         "workspace.previous",
+        "visual.zoom.in",
+        "visual.zoom.out",
+        "visual.zoom.reset",
+        "visual.zoom.restore",
+    })
+    _CLOSE_CONFIRM_ATTEMPTS = 4
+    _CLOSE_CONFIRM_DELAY_SECONDS = 0.25
+    _TERMINAL_CLASSES = frozenset({
+        "foot", "footclient", "kitty", "alacritty", "ghostty",
+        "commitchellhghostty", "orgwezfurlongwezterm", "wezterm",
+        "orggnometerminal", "orggnomeconsole", "gnometerminal", "konsole",
+        "xterm", "uxterm", "st256color",
     })
 
     def __init__(self, archi_bin_dir: Path):
@@ -86,6 +100,7 @@ class OmarchyDesktopAdapter:
             "success": "media-play",
             "unknown": "keyboard",
             "failed": "microphone-muted",
+            "attention": "dialog-warning",
             "cancelled": "microphone-muted",
         }
         try:
@@ -130,6 +145,8 @@ class OmarchyDesktopAdapter:
                 return self._launch(capability, ["omarchy-capture-screenshot"])
             if capability == "window.close_active":
                 return self._run(capability, ["hyprctl", "dispatch", "hl.dsp.window.close()"])
+            if capability.startswith("visual.zoom."):
+                return self._zoom(capability, payload)
             workspace = "e+1" if capability == "workspace.next" else "e-1"
             return self._run(
                 capability,
@@ -137,6 +154,39 @@ class OmarchyDesktopAdapter:
             )
         except (KeyError, TypeError, ValueError) as error:
             return self._result("failed", capability, f"invalid payload: {error}")
+
+    def zoom_factor(self) -> float | None:
+        """Read the same Hyprland cursor zoom setting used by Omarchy's bindings."""
+        try:
+            result = subprocess.run(
+                ["hyprctl", "-j", "getoption", "cursor.zoom_factor"],
+                capture_output=True, text=True, timeout=2, check=False,
+            )
+            if result.returncode != 0:
+                return None
+            factor = float(json.loads(result.stdout)["float"])
+            return factor if math.isfinite(factor) and 1 <= factor <= 10 else None
+        except (OSError, subprocess.TimeoutExpired, ValueError, TypeError, KeyError, json.JSONDecodeError):
+            return None
+
+    def _zoom(self, capability: str, payload: dict) -> ActionResult:
+        current = self.zoom_factor()
+        if current is None:
+            return self._result("unavailable", capability, "Hyprland zoom state is unavailable")
+        if capability == "visual.zoom.in":
+            factor = min(10.0, current + 1.0)
+        elif capability == "visual.zoom.out":
+            factor = max(1.0, current - 1.0)
+        elif capability == "visual.zoom.reset":
+            factor = 1.0
+        else:
+            factor = payload.get("factor")
+            if isinstance(factor, bool) or not isinstance(factor, (int, float)) or not math.isfinite(factor) or not 1 <= factor <= 10:
+                return self._result("failed", capability, "invalid saved zoom factor")
+        if abs(factor - current) < 0.001:
+            return self._result("success", capability, "zoom already at requested level")
+        # Use the same Lua config call as Omarchy's zoom bindings.
+        return self._run(capability, ["hyprctl", "eval", f"hl.config({{ cursor = {{ zoom_factor = {factor:g} }} }})"])
 
     def _launch(self, capability: str, argv: list[str]) -> ActionResult:
         try:
@@ -154,15 +204,10 @@ class OmarchyDesktopAdapter:
         return self._result("success" if result.returncode == 0 else "failed", capability, detail)
 
     def _close_matching_window(self, capability: str, payload: dict) -> ActionResult:
-        try:
-            result = subprocess.run(
-                ["hyprctl", "-j", "clients"], capture_output=True, text=True, timeout=2, check=False
-            )
-            if result.returncode != 0:
-                return self._result("unavailable", capability, (result.stderr or result.stdout).strip())
-            clients = json.loads(result.stdout)
-        except (OSError, subprocess.TimeoutExpired, json.JSONDecodeError) as error:
-            return self._result("unavailable", capability, str(error))
+        clients_result = self._clients(capability)
+        if isinstance(clients_result, ActionResult):
+            return clients_result
+        clients = clients_result
 
         client = self._best_window_match(clients, payload)
         if client is None:
@@ -172,7 +217,38 @@ class OmarchyDesktopAdapter:
             return self._result("failed", capability, "matching window has no valid address")
 
         dispatcher = f'hl.dsp.window.close({{ window = "address:{address}" }})'
-        return self._run(capability, ["hyprctl", "dispatch", dispatcher])
+        close_result = self._run(capability, ["hyprctl", "dispatch", dispatcher])
+        if not close_result.succeeded:
+            return close_result
+
+        # The close request targets the window address directly, so neither the
+        # active workspace nor its focus needs to change.  Only report success
+        # after Hyprland no longer lists that exact target.  A window that stays
+        # alive may be presenting its own save/discard/cancel dialog; this beta
+        # deliberately flags attention instead of trying to operate that dialog.
+        for attempt in range(self._CLOSE_CONFIRM_ATTEMPTS):
+            remaining_result = self._clients(capability)
+            if isinstance(remaining_result, ActionResult):
+                return self._result("attention", capability, "close requested; unable to confirm window state")
+            if not any(item.get("address") == address for item in remaining_result if isinstance(item, dict)):
+                return self._result("success", capability, "window closed")
+            if attempt + 1 < self._CLOSE_CONFIRM_ATTEMPTS:
+                time.sleep(self._CLOSE_CONFIRM_DELAY_SECONDS)
+        return self._result("attention", capability, "close requested; matching window still needs attention")
+
+    def _clients(self, capability: str) -> list[dict] | ActionResult:
+        try:
+            result = subprocess.run(
+                ["hyprctl", "-j", "clients"], capture_output=True, text=True, timeout=2, check=False
+            )
+            if result.returncode != 0:
+                return self._result("unavailable", capability, (result.stderr or result.stdout).strip())
+            clients = json.loads(result.stdout)
+        except (OSError, subprocess.TimeoutExpired, json.JSONDecodeError) as error:
+            return self._result("unavailable", capability, str(error))
+        if not isinstance(clients, list):
+            return self._result("unavailable", capability, "invalid client list")
+        return clients
 
     @staticmethod
     def _best_window_match(clients: object, payload: dict) -> dict | None:
@@ -200,6 +276,8 @@ class OmarchyDesktopAdapter:
 
         matches = []
         for client in clients if isinstance(clients, list) else []:
+            if not isinstance(client, dict):
+                continue
             classes = {
                 window_key(value)
                 for value in (client.get("class", ""), client.get("initialClass", ""))
@@ -212,12 +290,19 @@ class OmarchyDesktopAdapter:
             )
             class_match = bool(class_candidates & classes)
             title_match = exact_title or contained_title
-            matched = class_match and title_match if payload.get("require_title") else class_match or title_match
+            # GUI app titles can contain arbitrary document names. Only terminal
+            # apps need a title fallback because they share their terminal's class.
+            terminal_title_match = (
+                payload.get("terminal", False)
+                and bool(classes & OmarchyDesktopAdapter._TERMINAL_CLASSES)
+                and title_match
+            )
+            matched = class_match and title_match if payload.get("require_title") else class_match or terminal_title_match
             if matched:
                 focus = client.get("focusHistoryID")
                 rank = focus if isinstance(focus, int) and focus >= 0 else 1_000_000
-                matches.append((rank, client))
-        return min(matches, key=lambda item: item[0])[1] if matches else None
+                matches.append((not class_match, rank, client))
+        return min(matches, key=lambda item: item[:2])[2] if matches else None
 
     def _result(self, status: str, capability: str, detail: str | None = None) -> ActionResult:
         return ActionResult(status, self.provider_id, capability, detail)

@@ -41,6 +41,14 @@ cleanup_lock() {
 }
 trap cleanup_lock EXIT
 
+# A cancelled or replaced capture must never be submitted by an old stop job.
+[[ -r "$session_file" ]] || exit 0
+active_session="$(<"$session_file")"
+[[ -n "$active_session" ]] || exit 0
+if [[ -n "$requested_session" && "$active_session" != "$requested_session" ]]; then
+  exit 0
+fi
+
 if [[ -r "$monitor_pid_file" ]]; then
   monitor_pid="$(<"$monitor_pid_file")"
   if [[ "$monitor_pid" =~ ^[0-9]+$ ]] && [[ "$monitor_pid" != "$$" ]] &&
@@ -71,6 +79,8 @@ for ((attempt = 0; attempt < wait_ticks; attempt++)); do
 done
 
 transcript_ready_ns="$(date +%s%N)"
+[[ -r "$session_file" ]] || exit 0
+[[ "$(<"$session_file")" == "$active_session" ]] || exit 0
 transcript_wait_ms="$(( (transcript_ready_ns - stop_started_ns) / 1000000 ))"
 capture_duration_ms=""
 if [[ -e "$start_time_file" ]]; then
