@@ -9,6 +9,7 @@ description = "A local, deterministic accessibility control plane for Linux"
 requires-python = ">=3.11"
 authors = [{ name = "ArCHi contributors" }]
 readme = "README.md"
+license = { file = "LICENSE" }
 classifiers = [
   "Development Status :: 4 - Beta",
   "Environment :: X11 Applications :: Wayland",

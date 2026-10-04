@@ -168,6 +168,8 @@ diagnostics; it does not execute commands.
 Review the files first, then run:
 
 ```bash
+git clone https://github.com/RawLabs/ArCHi.git
+cd ArCHi
 ./install.sh
 ```
 
@@ -259,6 +261,16 @@ The near-term, bounded beta extensions are documented in
 
 ## Before release beyond beta
 
-Choose a license, add contribution and security guidance, test on a fresh
+Add contribution and security guidance, test on a fresh
 Omarchy account, validate a second desktop adapter, and package the project for
 the supported distributions.
+
+## License
+
+ArCHi's original code and documentation are available under the
+[MIT License](LICENSE).
+
+Third-party voice samples and generated demo audio retain their provider's
+terms; the MIT license does not relicense them. Demo audio uses ElevenLabs
+voices ([elevenlabs.io](https://elevenlabs.io)). Custom voice references are
+supplied locally by the user and excluded from Git.

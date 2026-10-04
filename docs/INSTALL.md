@@ -4,6 +4,14 @@ Use the source installer or the Arch beta package below. The Python wheel
 contains the core modules only; `pip install` does not install the desktop
 helpers or operational registry.
 
+Clone the source repository:
+
+```bash
+git clone https://github.com/RawLabs/ArCHi.git
+cd ArCHi
+./install.sh
+```
+
 ## Packaged beta on Omarchy / Arch
 
 For a transferable beta build, install the `archi-assist-beta-*.pkg.tar.zst`

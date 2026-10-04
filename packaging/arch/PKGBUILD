@@ -4,7 +4,7 @@ pkgver=0.1.0b1
 pkgrel=1
 pkgdesc="Local deterministic accessibility control plane for Omarchy/Hyprland (beta)"
 arch=('any')
-license=('custom:pending')
+license=('MIT')
 depends=('bash' 'python' 'curl' 'jq' 'wl-clipboard' 'pipewire' 'wireplumber' 'gtk3' 'xdg-utils' 'libpulse' 'util-linux')
 optdepends=(
   'hyprland: Hyprland desktop control via hyprctl'
@@ -35,5 +35,5 @@ package() {
   install -Dm644 "$source_root/README.md" "$pkgdir/usr/share/doc/$pkgname/README.md"
   install -Dm644 "$source_root/docs/INSTALL.md" "$pkgdir/usr/share/doc/$pkgname/INSTALL.md"
   install -Dm644 "$source_root/docs/BETA.md" "$pkgdir/usr/share/doc/$pkgname/BETA.md"
-  install -Dm644 "$source_root/LICENSE-PENDING.md" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+  install -Dm644 "$source_root/LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
 }

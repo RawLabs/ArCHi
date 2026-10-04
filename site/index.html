@@ -79,7 +79,7 @@
 
           <!-- Quick 1-Line Install Snippet -->
           <div class="quick-snippet-box">
-            <span class="cmd" id="hero-install-cmd">./install.sh</span>
+            <span class="cmd" id="hero-install-cmd">git clone https://github.com/RawLabs/ArCHi.git &amp;&amp; cd ArCHi &amp;&amp; ./install.sh</span>
             <button class="copy-btn" data-copy-target="hero-install-cmd" aria-label="Copy installation command">
               📋 <span>Copy</span>
             </button>
@@ -361,7 +361,8 @@
               <span>Terminal — Source Installation</span>
               <button class="copy-btn" data-copy-target="code-install-box">📋 Copy</button>
             </div>
-            <pre class="code-block-content" id="code-install-box"><code># From the downloaded or cloned ArCHi source directory:
+            <pre class="code-block-content" id="code-install-box"><code>git clone https://github.com/RawLabs/ArCHi.git
+cd ArCHi
 ./install.sh
 
 # To refresh an existing registry with current defaults (with backup):
