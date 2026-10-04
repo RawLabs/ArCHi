@@ -1,8 +1,21 @@
 # ArCHi
 
 <p align="center">
+  <a href="https://rawlabs.github.io/ArCHi/site/logo_animation.html">
   <img src="media/archi_main_logo_regen.png" alt="ArCHi — Artificial Restorative Computer Harness Intelligence" width="720">
+  </a>
 </p>
+
+<p align="center">
+  <strong><a href="https://rawlabs.github.io/ArCHi/site/logo_animation.html">▶ Watch the animated project introduction</a></strong>
+  &nbsp; · &nbsp;
+  <strong><a href="https://rawlabs.github.io/ArCHi/site/concept_film.html">▶ Watch the concept film</a></strong>
+</p>
+
+The narrated introduction explains the name and idea behind ArCHi. The
+102-second concept film shows the path from a spoken request to a desktop
+action. Both are concept presentations; the film includes proposed
+confirmation behavior beyond the current beta.
 
 **ArCHi — Artificial Restorative Computer Harness Intelligence** ($A^r \cdot CH^i$) — is a local,
 deterministic voice assistant for Omarchy. It turns short, natural requests into
