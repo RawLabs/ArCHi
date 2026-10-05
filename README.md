@@ -48,6 +48,9 @@ installed helpers.
 | --- | --- |
 | `open downloads` | Opens your Downloads folder |
 | `open cliamp` | Opens cliamp if it is installed; use another installed app's name too |
+| `open browser` | Opens the default browser listed in your app menu |
+| `switch to browser` | Focuses the most recently used matching browser window |
+| `close the browser` | Requests that browser window close, even when another app has focus |
 | `close cliamp` | Requests that app's window close; reports if it still needs attention |
 | `zoom` → `more` → `less` | Adjusts native screen zoom with short follow-ups |
 | `zoom out` | Resets zoom to normal |
@@ -55,6 +58,10 @@ installed helpers.
 | `read clipboard` | Reads clipboard text aloud |
 | `stop speaking` | Stops Pocket TTS playback |
 | `off record` / `logging on` | Pauses or resumes local diagnostic logging |
+
+Say `open` followed by an app's menu name. ArCHi rescans menu entries for every
+command, so installing or removing an app needs no command-registry edit.
+Run `archi-cheatsheet` to see the discovered apps and accepted opening phrases.
 
 Recording submits automatically after 120 seconds. ArCHi listens only during
 an explicitly started capture. Logs include transcripts and desktop context
@@ -89,6 +96,16 @@ It currently:
   per-application configuration. App names may contain spaces, may be spoken
   as separate letters (`open c l i a m p`), and accept a conservative q/c/k
   phonetic equivalence;
+- refreshes the app list for every command, using app-menu entries and honoring
+  hidden entries, desktop visibility, executable checks, and Omarchy's menu hide
+  list. `archi-cheatsheet` lists discovered apps and an accepted opening phrase;
+- resolves everyday names such as browser, terminal, file manager, editor,
+  video player, image viewer, and PDF viewer through desktop defaults. Music
+  and calculator aliases resolve when one installed app owns that role;
+- accepts `open`, `launch`, `start`, `close`, `quit`, `exit`, and `dismiss`
+  followed by an app name, with optional “the.” Use `switch to`, `focus`, or
+  `show` to bring an existing app window forward; closing targets its most
+  recently focused window and allows the app to show unsaved-changes prompts;
 - stops and submits capture with the same `Super+R` toggle or the active-only
   spoken terminator “ArCHi stop”;
 - provides spoken responses through a configurable local TTS helper or a

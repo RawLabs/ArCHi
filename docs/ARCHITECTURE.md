@@ -229,12 +229,19 @@ Today, the prototype takes this path:
    and post-stop transcript-wait timing so AC/battery behavior can be compared
    later.
 3. `router.py` normalizes the phrase, strips an optional `ArCHi` or `archie`
-   prefix, reloads installed applications from standard XDG/Flatpak/Snap
+   prefix, reloads menu-visible applications from XDG/Flatpak/Snap/Nix
    desktop-entry directories, and matches the result against those applications
    plus the operational commands in `commands.toml`. Exact phrases win. When an
    app phrase misses exactly, ArCHi can resolve one unambiguous desktop-entry
    alias with spaces removed, separately spoken letters, q/c/k equivalence, or
    a one-character transcription correction for names of at least five letters.
+   Discovery honors hidden entries, desktop visibility, `TryExec`, user entry
+   precedence, and Omarchy's menu hide list. Desktop default handlers assign
+   everyday role aliases; remaining shared aliases are omitted. The router
+   generates `app.open`, `app.close`, and `app.focus` commands, including optional
+   articles, on each load. Launch uses the complete desktop ID with `gtk-launch`;
+   close and focus use the most recently focused matching Hyprland window
+   address. `archi-cheatsheet` reads the same generated command list.
 4. The matched operational command requests a capability. The selected desktop
    adapter advertises support, captures desktop context, and translates that
    capability into its local implementation. A small legacy argv path remains

@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import os
+import sys
 from pathlib import Path
 import tomllib
 
@@ -41,7 +42,27 @@ def main() -> int:
             continue
         phrases = " | ".join(command.get("phrases", []))
         print(f"  {command['id']:<22} {phrases}")
-    print("\nInstalled apps: say open/launch/start or close/quit/exit plus an unambiguous app name.")
+    print("\nInstalled apps: say open/launch/start, close/quit/exit/dismiss, or switch to/focus/show plus an unambiguous app name.")
+    print("Everyday names use desktop defaults: browser, terminal, file manager, editor, video player, image viewer, PDF viewer.")
+    print("Music and calculator work when one installed app owns that role. Optional 'the' is accepted before app names.")
+    sys.path.insert(0, str(archi_home))
+    try:
+        from router import load_commands, normalize
+        by_phrase, by_id = load_commands()
+    except (ImportError, OSError, ValueError) as error:
+        print(f"Could not scan app-menu commands: {error}")
+        return 1
+    apps = sorted(
+        (command for command in by_id.values() if command.get("capability") == "app.open"),
+        key=lambda command: command["payload"]["app_name"].casefold(),
+    )
+    print(f"\nDiscovered app-menu entries ({len(apps)}):")
+    for app in apps:
+        phrases = [phrase for phrase in app["phrases"] if phrase.startswith("open ") and by_phrase.get(phrase) is app]
+        if phrases:
+            menu_phrase = "open " + normalize(app["payload"]["app_name"])
+            opening_phrase = menu_phrase if menu_phrase in phrases else min(phrases, key=lambda phrase: (len(phrase), phrase))
+            print(f"  {app['payload']['app_name']}: {opening_phrase}")
     print("Zoom/volume follow-ups: more, less, increase it, decrease it; cancel ends the adjustment.")
     print("\nDetailed test matrix: docs/TESTING.md")
     return 0

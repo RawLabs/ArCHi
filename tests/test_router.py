@@ -24,6 +24,8 @@ Terminal=true
     )
     monkeypatch.setenv("ARCHI_APPLICATION_DIRS", str(applications))
     monkeypatch.setenv("ARCHI_APP_ALIASES_PATH", str(tmp_path / "app-aliases.toml"))
+    monkeypatch.setenv("OMARCHY_PATH", str(tmp_path / "omarchy"))
+    monkeypatch.setattr(router, "default_app_aliases", lambda _apps: {})
     return applications
 
 
@@ -108,6 +110,103 @@ def test_open_commands_have_matching_close_commands():
         assert f"close_app:{desktop_id}" in by_id
 
 
+def test_browser_commands_target_default_browser(monkeypatch, isolated_app_registry, isolated_router):
+    for desktop_id, name in [("chromium", "Chromium"), ("firefox", "Firefox")]:
+        (isolated_app_registry / f"{desktop_id}.desktop").write_text(
+            f"[Desktop Entry]\nType=Application\nName={name}\nGenericName=Web Browser\nExec={desktop_id}\n"
+        )
+    monkeypatch.setattr(router, "default_app_aliases", lambda _apps: {"chromium.desktop": {"browser", "web browser", "default browser"}})
+    for phrase in ["open browser", "close browser", "quit the browser", "exit default browser", "close web browser"]:
+        result = router.route(phrase, dry_run=True)
+        verb = "open" if phrase.startswith("open") else "close"
+        assert result["command_id"] == f"{verb}_app:chromium.desktop"
+
+    monkeypatch.setattr(router, "default_app_aliases", lambda _apps: {"firefox.desktop": {"browser"}})
+    by_phrase, _ = router.load_commands()
+    assert by_phrase["close browser"]["desktop_id"] == "firefox.desktop"
+
+
+def test_browser_alias_requires_installed_default(monkeypatch):
+    from archi import applications
+    monkeypatch.setattr(applications, "query_desktop_id", lambda _argv: "missing.desktop")
+    monkeypatch.setattr(router, "default_app_aliases", applications.default_app_aliases)
+    by_phrase, _ = router.load_commands()
+    assert "close browser" not in by_phrase
+
+
+@pytest.mark.parametrize("query, names", [
+    ("x-scheme-handler/https", ["browser", "web browser"]),
+    ("inode/directory", ["files", "file manager"]),
+    ("text/plain", ["editor", "text editor"]),
+    ("video/mp4", ["video player"]),
+    ("image/png", ["photo viewer"]),
+    ("application/pdf", ["pdf viewer", "pdf reader"]),
+    ("--print-id", ["terminal", "console"]),
+])
+def test_common_app_roles_support_every_action(query, names, monkeypatch, isolated_router):
+    from archi import applications
+    monkeypatch.setattr(applications, "query_desktop_id", lambda argv: "cliamp.desktop" if argv[-1] == query else None)
+    monkeypatch.setattr(router, "default_app_aliases", applications.default_app_aliases)
+    for name in names:
+        for verb, action in router.APP_ACTION_VERBS.items():
+            result = router.route(f"{verb} the {name}", dry_run=True)
+            command_prefix = action.split(".")[1]
+            assert result["command_id"] == f"{command_prefix}_app:cliamp.desktop"
+
+
+def test_music_role_requires_one_music_player(monkeypatch, isolated_app_registry):
+    from archi import applications
+    monkeypatch.setattr(applications, "query_desktop_id", lambda _argv: None)
+    monkeypatch.setattr(router, "default_app_aliases", applications.default_app_aliases)
+    by_phrase, _ = router.load_commands()
+    assert by_phrase["switch to music"]["desktop_id"] == "cliamp.desktop"
+    (isolated_app_registry / "other.desktop").write_text(
+        "[Desktop Entry]\nType=Application\nName=Other\nGenericName=Music Player\nExec=other\n"
+    )
+    by_phrase, _ = router.load_commands()
+    assert "close music" not in by_phrase
+    assert "close music player" not in by_phrase
+
+
+@pytest.mark.parametrize("failure", ["missing", "timeout", "nonzero", "empty"])
+def test_default_app_query_handles_unavailable_defaults(monkeypatch, failure):
+    import subprocess
+    from archi.applications import query_desktop_id
+
+    def fake_run(argv, **kwargs):
+        assert kwargs["timeout"] == 2
+        if failure == "missing":
+            raise FileNotFoundError()
+        if failure == "timeout":
+            raise subprocess.TimeoutExpired(argv, 2)
+        return subprocess.CompletedProcess(argv, 1 if failure == "nonzero" else 0, "app.desktop" if failure == "nonzero" else "")
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    assert query_desktop_id(["xdg-mime", "query", "default", "text/plain"]) is None
+
+
+def test_focus_targets_app_window_instead_of_active_window(monkeypatch, tmp_path):
+    adapter = OmarchyDesktopAdapter(tmp_path)
+    monkeypatch.setattr(adapter, "_clients", lambda _capability: [
+        {"address": "0x1", "class": "foot", "title": "shell", "focusHistoryID": 0},
+        {"address": "0x2", "class": "foot", "title": "cliamp", "focusHistoryID": 1},
+    ])
+    calls = []
+    monkeypatch.setattr(adapter, "_run", lambda capability, argv: calls.append(argv) or ActionResult("success", adapter.provider_id, capability))
+    _, by_id = router.load_commands()
+    command = by_id["focus_app:cliamp.desktop"]
+    assert adapter.execute("app.focus", command["payload"]).succeeded
+    assert calls == [["hyprctl", "dispatch", 'hl.dsp.focus({ window = "address:0x2" })']]
+
+
+@pytest.mark.parametrize("clients", [[], [{"class": "cliamp", "address": "invalid"}]])
+def test_focus_does_not_dispatch_without_valid_target(monkeypatch, tmp_path, clients):
+    adapter = OmarchyDesktopAdapter(tmp_path)
+    monkeypatch.setattr(adapter, "_clients", lambda _capability: clients)
+    monkeypatch.setattr(adapter, "_run", lambda *_args: pytest.fail("unexpected dispatch"))
+    assert adapter.execute("app.focus", {"desktop_id": "cliamp.desktop"}).status == "failed"
+
+
 def test_desktop_registry_refreshes_on_each_load(isolated_app_registry):
     by_phrase, _ = router.load_commands()
     assert "open fresh app" not in by_phrase
@@ -118,6 +217,50 @@ def test_desktop_registry_refreshes_on_each_load(isolated_app_registry):
     by_phrase, _ = router.load_commands()
     assert by_phrase["open fresh app"]["payload"]["launcher_id"] == "fresh"
     assert by_phrase["close fresh app"]["capability"] == "app.close"
+    (isolated_app_registry / "fresh.desktop").unlink()
+    by_phrase, _ = router.load_commands()
+    assert "open fresh app" not in by_phrase
+
+
+@pytest.mark.parametrize("extra, visible", [
+    ("", True),
+    ("Hidden=true\n", False),
+    ("NoDisplay=true\n", False),
+    ("OnlyShowIn=Hyprland;\n", True),
+    ("OnlyShowIn=GNOME;\n", False),
+    ("NotShowIn=Hyprland;\n", False),
+    ("NotShowIn=GNOME;\n", True),
+    ("TryExec=archi-test-nonexistent-binary\n", False),
+])
+def test_discovery_honors_app_menu_visibility(monkeypatch, isolated_app_registry, extra, visible):
+    monkeypatch.setenv("XDG_CURRENT_DESKTOP", "Hyprland")
+    monkeypatch.delenv("XDG_SESSION_DESKTOP", raising=False)
+    monkeypatch.delenv("DESKTOP_SESSION", raising=False)
+    (isolated_app_registry / "menu-test.desktop").write_text(
+        "[Desktop Entry]\nType=Application\nName=Menu Test\nExec=menu-test\n" + extra
+    )
+    by_phrase, _ = router.load_commands()
+    assert ("open menu test" in by_phrase) is visible
+
+
+def test_discovery_honors_omarchy_menu_hide_list(monkeypatch, isolated_app_registry, tmp_path):
+    omarchy_dir = tmp_path / "omarchy"
+    hides = omarchy_dir / "default" / "omarchy" / "launcher.hides"
+    hides.parent.mkdir(parents=True)
+    hides.write_text("cliamp.desktop\n")
+    by_phrase, _ = router.load_commands()
+    assert "open cliamp" not in by_phrase
+    hides.write_text("")
+    by_phrase, _ = router.load_commands()
+    assert "open cliamp" in by_phrase
+
+
+def test_menu_app_launch_preserves_complete_desktop_id(monkeypatch, tmp_path):
+    adapter = OmarchyDesktopAdapter(tmp_path)
+    calls = []
+    monkeypatch.setattr(adapter, "_launch", lambda capability, argv: calls.append(argv) or ActionResult("success", adapter.provider_id, capability))
+    assert adapter.execute("app.open", {"desktop_id": "org.telegram.desktop.desktop", "launcher_id": "org.telegram.desktop"}).succeeded
+    assert calls == [["gtk-launch", "org.telegram.desktop.desktop"]]
 
 
 def test_user_spoken_alias_routes_only_to_its_currently_installed_app(monkeypatch, isolated_app_registry, tmp_path):

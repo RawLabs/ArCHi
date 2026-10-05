@@ -57,7 +57,10 @@ Operational commands are exact allowlisted phrases. Installed apps refresh from
 the live XDG registry for every routed command. App matching accepts spaces,
 separately spoken letters, q/c/k equivalence, and one character correction for
 an unambiguous name of at least five characters. A candidate shared by more
-than one installed app is rejected rather than guessed.
+than one installed app is rejected rather than guessed, except everyday role
+names resolved by an installed desktop default. Discovery follows app-menu
+visibility and refreshes each command. Open/close/focus verbs and optional
+`the` are described in [app voice controls](VOICE_CONTROLS.md#apps-from-the-app-menu).
 
 ## Updating the beta
 

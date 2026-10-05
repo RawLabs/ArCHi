@@ -5,7 +5,10 @@ from __future__ import annotations
 import configparser
 import os
 import shlex
+import shutil
+import subprocess
 import tomllib
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -51,6 +54,7 @@ def application_dirs() -> list[Path]:
             data_home / "flatpak" / "exports" / "share" / "applications",
             Path("/var/lib/flatpak/exports/share/applications"),
             Path("/var/lib/snapd/desktop/applications"),
+            Path.home() / ".nix-profile" / "share" / "applications",
         ])
 
     result = []
@@ -67,6 +71,52 @@ def app_aliases_path() -> Path:
     """Return the user-owned, persistent spoken-app alias registry path."""
     config_home = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config"))
     return Path(os.environ.get("ARCHI_APP_ALIASES_PATH", config_home / "archi" / "app-aliases.toml"))
+
+
+def query_desktop_id(argv: list[str]) -> str | None:
+    """Query a desktop default without launching the application."""
+    try:
+        result = subprocess.run(
+            argv,
+            capture_output=True, text=True, timeout=2, check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    desktop_id = result.stdout.strip()
+    return desktop_id if result.returncode == 0 and desktop_id else None
+
+
+def default_app_aliases(apps: list[DesktopApplication]) -> dict[str, set[str]]:
+    """Resolve everyday app roles using desktop defaults or a unique app name."""
+    roles = [
+        ("x-scheme-handler/https", {"browser", "web browser", "default browser"}),
+        ("inode/directory", {"files", "file manager", "file browser"}),
+        ("text/plain", {"editor", "text editor", "code editor"}),
+        ("video/mp4", {"video player"}),
+        ("image/png", {"image viewer", "photo viewer"}),
+        ("application/pdf", {"pdf viewer", "pdf reader", "document viewer"}),
+    ]
+    queries = [["xdg-mime", "query", "default", mime] for mime, _ in roles]
+    queries.append(["xdg-terminal-exec", "--print-id"])
+    # Keep default discovery off the command's latency-critical serial path.
+    with ThreadPoolExecutor(max_workers=len(queries)) as executor:
+        defaults = list(executor.map(query_desktop_id, queries))
+    roles.append(("terminal", {"terminal", "console"}))
+    app_ids = {app.desktop_id for app in apps}
+    result: dict[str, set[str]] = {}
+    for (_, aliases), desktop_id in zip(roles, defaults):
+        # xdg-terminal-exec can append a Desktop Action after a colon. The
+        # standard desktop launcher here supports only the main app entry.
+        if desktop_id in app_ids:
+            result.setdefault(desktop_id, set()).update(aliases)
+    for generic_name, aliases in [
+        ("music player", {"music", "music player"}),
+        ("calculator", {"calculator"}),
+    ]:
+        matches = [app.desktop_id for app in apps if generic_name in app.aliases]
+        if len(matches) == 1:
+            result.setdefault(matches[0], set()).update(aliases)
+    return result
 
 
 def load_app_aliases(path: Path | None = None) -> dict[str, set[str]]:
@@ -118,10 +168,37 @@ def executable_name(exec_line: str) -> str | None:
     return Path(tokens[index]).name if index < len(tokens) else None
 
 
+def menu_hidden_desktop_ids() -> set[str]:
+    """Read the hide list consumed by Omarchy's app menu, when installed."""
+    omarchy_path = Path(os.environ.get("OMARCHY_PATH", "/usr/share/omarchy"))
+    try:
+        lines = (omarchy_path / "default" / "omarchy" / "launcher.hides").read_text().splitlines()
+    except (OSError, UnicodeError):
+        return set()
+    return {line.strip().removesuffix(".desktop") for line in lines if line.strip()}
+
+
+def menu_entry_visible(section: configparser.SectionProxy) -> bool:
+    """Apply desktop menu visibility and executable availability rules."""
+    if desktop_bool(section, "Hidden") or desktop_bool(section, "NoDisplay"):
+        return False
+    desktops = {
+        name for variable in ("XDG_CURRENT_DESKTOP", "XDG_SESSION_DESKTOP", "DESKTOP_SESSION")
+        for name in os.environ.get(variable, "").split(":") if name
+    }
+    only = {name for name in section.get("OnlyShowIn", "").split(";") if name}
+    excluded = {name for name in section.get("NotShowIn", "").split(";") if name}
+    if (only and not desktops.intersection(only)) or desktops.intersection(excluded):
+        return False
+    try_exec = section.get("TryExec", "").strip()
+    return not try_exec or shutil.which(try_exec) is not None
+
+
 def scan_desktop_apps() -> list[DesktopApplication]:
-    """Read launchable apps from the current XDG desktop-entry registry."""
+    """Refresh launchable menu apps from the current desktop-entry registry."""
     apps = []
     seen_ids = set()
+    hidden_ids = menu_hidden_desktop_ids()
     for directory in application_dirs():
         try:
             entries = sorted(directory.rglob("*.desktop"))
@@ -135,6 +212,8 @@ def scan_desktop_apps() -> list[DesktopApplication]:
             if desktop_id in seen_ids:
                 continue
             seen_ids.add(desktop_id)
+            if desktop_id.removesuffix(".desktop") in hidden_ids:
+                continue
 
             parser = configparser.ConfigParser(interpolation=None, strict=False)
             parser.optionxform = str
@@ -144,9 +223,7 @@ def scan_desktop_apps() -> list[DesktopApplication]:
                 section = parser["Desktop Entry"]
             except (OSError, UnicodeError, configparser.Error, KeyError):
                 continue
-            if desktop_bool(section, "Hidden"):
-                continue
-            if section.get("Type") != "Application" or desktop_bool(section, "NoDisplay"):
+            if section.get("Type") != "Application" or not menu_entry_visible(section):
                 continue
             name = section.get("Name", "").strip()
             exec_line = section.get("Exec", "").strip()

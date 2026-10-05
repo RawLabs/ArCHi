@@ -151,6 +151,21 @@ and `cancel`, see [voice controls](VOICE_CONTROLS.md). Existing installations
 keep their active command registry; use `./install.sh --refresh-registry` after
 reviewing the new defaults to enable newly added phrases.
 
+### Apps from the app menu
+
+Run `./install.sh` to update automatic app discovery and open/close/focus
+commands; these generated app commands do not need `--refresh-registry`.
+ArCHi rescans desktop menu entries for every command and respects menu hiding,
+desktop visibility, executable availability, and Omarchy's `launcher.hides`.
+Newly installed apps are picked up automatically.
+
+Run `archi-cheatsheet` to list discovered apps and opening phrases. Say
+`open` followed by the menu name, or use everyday names such as `browser`,
+`terminal`, `file manager`, and `editor`. `switch to browser` brings an existing
+browser window forward; `close the browser` requests one matching window close.
+See [voice controls](VOICE_CONTROLS.md#apps-from-the-app-menu) for all verbs,
+default-app selections, and limits.
+
 ### Correcting a repeated app-name transcription
 
 Application commands are discovered from installed desktop entries.  If local

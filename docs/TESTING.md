@@ -2,7 +2,8 @@
 
 This sheet describes the bindings active on the current Omarchy test machine
 and the phrases accepted by the deterministic production router. Run
-`archi-cheatsheet` for the same quick reference in a terminal.
+`archi-cheatsheet` for the quick reference and currently discovered menu apps
+in a terminal.
 
 The supported beta scope and reporting protocol are in [beta operations](BETA.md).
 
@@ -35,7 +36,8 @@ matching.
 | Command | Accepted phrases | Effect / test caution |
 |---|---|---|
 | `open_app:<desktop-id>` | open, launch, or start + an unambiguous installed app name | Launches the current `.desktop` entry through `gtk-launch` |
-| `close_app:<desktop-id>` | close, quit, or exit + an unambiguous installed app name | Closes the most recently focused matching app window |
+| `close_app:<desktop-id>` | close, quit, exit, or dismiss + an unambiguous installed app name | Requests the most recently focused matching app window close |
+| `focus_app:<desktop-id>` | switch to, focus, or show + an unambiguous installed app name | Focuses an existing matching window; does not launch a closed app |
 | `open_home` | open home; open home folder; open my home folder | Opens a folder |
 | `open_downloads` | open downloads; open downloads folder | Opens a folder |
 | `volume_up` | volume up; turn volume up; turn the volume up; raise the volume; make it louder; louder | Changes system audio |
@@ -75,9 +77,35 @@ and accepts one transcription change for an unambiguous name of five or more
 letters. It never relaxes operational command matching.
 Say `cancel`, `cancel that`, or `never mind` to abandon clarification.
 
-The app rows are generated at command time from standard XDG, Flatpak, and Snap
-desktop-entry directories. Shared aliases are omitted so ArCHi does not guess
-between two applications with the same display or generic name.
+The app rows are generated at command time from XDG, Flatpak, Snap, and Nix
+desktop-entry directories. Menu hiding, desktop visibility, `TryExec`, and
+Omarchy's `launcher.hides` filter that list. Optional `the` is accepted before
+app names. Desktop defaults select everyday names such as browser, terminal,
+file manager, editor, video player, image viewer, and PDF viewer. Other shared
+aliases are omitted so ArCHi does not guess between two apps. See
+[app voice controls](VOICE_CONTROLS.md#apps-from-the-app-menu).
+
+### App discovery and window smoke tests
+
+1. Run `archi-cheatsheet`; compare its app names with the app menu. Hidden or
+   unavailable entries should not produce opening commands.
+2. Install a disposable test app entry, then dry-run `open` plus its menu name.
+   Remove the entry and repeat; the command should become unknown without
+   restarting ArCHi or editing its registry.
+3. Dry-run `open browser`, `close the browser`, and `switch to browser`. Check
+   that all target the same installed default browser. Repeat for terminal,
+   file manager, and editor where desktop defaults are available.
+4. In an active Hyprland session, open a disposable app window. Focus another
+   app, say `switch to` plus the test app name, then request it close. Confirm
+   the requested app is targeted. If it asks about unsaved work, ArCHi should
+   report attention rather than force it closed.
+5. With the test app closed, its focus command should fail without launching
+   it or moving focus to an unrelated app.
+
+Automated tests cover menu filters, live registry refresh, default-role
+selection, phrase variants, full desktop IDs at launch, and window-address
+targeting. Dry runs and unit tests do not establish live speech or compositor
+behavior.
 
 ## Current prototype evidence matrix
 

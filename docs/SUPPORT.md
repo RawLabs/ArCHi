@@ -32,7 +32,7 @@ A desktop adapter:
 - validates targets before performing a consequential action.
 
 The current adapter is `src/archi/adapters/omarchy.py`. The core registry asks
-for capabilities such as `app.open`, `app.close`, `window.close_active`, and
+for capabilities such as `app.open`, `app.close`, `app.focus`, `window.close_active`, and
 `workspace.next`; it never names `hyprctl` or an `omarchy-*` executable.
 
 ## Adapters and plugins

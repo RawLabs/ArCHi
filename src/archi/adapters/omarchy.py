@@ -23,6 +23,7 @@ class OmarchyDesktopAdapter:
     _CAPABILITIES = frozenset({
         "app.close",
         "app.open",
+        "app.focus",
         "audio.mute",
         "audio.volume.lower",
         "audio.volume.raise",
@@ -123,9 +124,11 @@ class OmarchyDesktopAdapter:
             return self._result("unsupported", capability, "capability is not provided")
         try:
             if capability == "app.open":
-                return self._launch(capability, ["gtk-launch", payload["launcher_id"]])
+                return self._launch(capability, ["gtk-launch", payload["desktop_id"]])
             if capability == "app.close":
                 return self._close_matching_window(capability, payload)
+            if capability == "app.focus":
+                return self._focus_matching_window(capability, payload)
             if capability == "folder.open":
                 return self._launch(capability, ["xdg-open", payload["path"]])
             if capability == "folder.close":
@@ -202,6 +205,18 @@ class OmarchyDesktopAdapter:
             return self._result("unavailable", capability, str(error))
         detail = (getattr(result, "stderr", "") or getattr(result, "stdout", "")).strip() or None
         return self._result("success" if result.returncode == 0 else "failed", capability, detail)
+
+    def _focus_matching_window(self, capability: str, payload: dict) -> ActionResult:
+        clients = self._clients(capability)
+        if isinstance(clients, ActionResult):
+            return clients
+        client = self._best_window_match(clients, payload)
+        if client is None:
+            return self._result("failed", capability, "no matching window")
+        address = client.get("address")
+        if not isinstance(address, str) or not re.fullmatch(r"0x[0-9a-fA-F]+", address):
+            return self._result("failed", capability, "matching window has no valid address")
+        return self._run(capability, ["hyprctl", "dispatch", f'hl.dsp.focus({{ window = "address:{address}" }})'])
 
     def _close_matching_window(self, capability: str, payload: dict) -> ActionResult:
         clients_result = self._clients(capability)

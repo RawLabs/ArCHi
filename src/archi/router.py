@@ -17,12 +17,12 @@ from pathlib import Path
 
 try:
     from .adapters import ActionResult, select_desktop_adapter
-    from .applications import load_app_aliases, scan_desktop_apps
+    from .applications import default_app_aliases, load_app_aliases, scan_desktop_apps
     from .feedback import emit_feedback
     from .text import normalize
 except ImportError:  # Installed router is also executable as a standalone script.
     from adapters import ActionResult, select_desktop_adapter
-    from applications import load_app_aliases, scan_desktop_apps
+    from applications import default_app_aliases, load_app_aliases, scan_desktop_apps
     from feedback import emit_feedback
     from text import normalize
 
@@ -59,17 +59,28 @@ APP_ACTION_VERBS = {
     "close": "app.close",
     "quit": "app.close",
     "exit": "app.close",
+    "dismiss": "app.close",
+    "switch to": "app.focus",
+    "focus": "app.focus",
+    "show": "app.focus",
 }
 
 
 def dynamic_app_commands() -> list[dict]:
-    """Build open/close commands, omitting aliases shared by multiple apps."""
+    """Build app commands, resolving roles and omitting ambiguous app names."""
     apps = scan_desktop_apps()
     custom_aliases = load_app_aliases()
     aliases_by_desktop_id = {
         app.desktop_id: set(app.aliases) | custom_aliases.get(app.desktop_id, set())
         for app in apps
     }
+    role_aliases = default_app_aliases(apps)
+    for desktop_id, role_names in role_aliases.items():
+        for aliases in aliases_by_desktop_id.values():
+            aliases.difference_update(role_names)
+        aliases_by_desktop_id[desktop_id].update(role_names)
+    for aliases in aliases_by_desktop_id.values():
+        aliases.update(f"the {alias}" for alias in list(aliases) if not alias.startswith("the "))
     owners: dict[str, set[str]] = {}
     for app in apps:
         for alias in aliases_by_desktop_id[app.desktop_id]:
@@ -93,12 +104,21 @@ def dynamic_app_commands() -> list[dict]:
             },
             {
                 "id": f"close_app:{app.desktop_id}",
-                "phrases": [f"{verb} {alias}" for alias in aliases for verb in ("close", "quit", "exit")],
+                "phrases": [f"{verb} {alias}" for alias in aliases for verb in ("close", "quit", "exit", "dismiss")],
                 "action": "capability",
                 "capability": "app.close",
                 "payload": payload,
                 "desktop_id": app.desktop_id,
                 "reply": f"Closed {app.name}.",
+            },
+            {
+                "id": f"focus_app:{app.desktop_id}",
+                "phrases": [f"{verb} {alias}" for alias in aliases for verb in ("switch to", "focus", "show")],
+                "action": "capability",
+                "capability": "app.focus",
+                "payload": payload,
+                "desktop_id": app.desktop_id,
+                "reply": f"Switched to {app.name}.",
             },
         ])
     return commands
